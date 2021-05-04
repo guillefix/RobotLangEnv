@@ -1,7 +1,7 @@
 import os
 
 # from playground.color_generation import *
-from color_generation import *
+from src.envs.color_generation import *
 
 def get_env_params(max_nb_objects=3,
                    admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),

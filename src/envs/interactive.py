@@ -1,5 +1,5 @@
 
-from envList import * 
+from src.envs.envList import *
 import numpy as np
 import pybullet as p
 
@@ -33,8 +33,8 @@ def main():
     else:
         controls = add_xyz_rpy_controls(env)
 
-    env.render(mode='human')
-    env.reset()
+    # env.render(mode='human')
+    # env.reset()
 
     for i in range(1000000):
 

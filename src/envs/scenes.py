@@ -71,10 +71,14 @@ def complex_scene(bullet_client, offset, flags, env_range_low, env_range_high, n
     door = add_door(bullet_client)
     drawer = add_drawer(bullet_client)
     dial, toggleGrill = add_dial(bullet_client)#, thickness = thickness) 1.5
-    button_red, toggleSphere_red = add_button_red(bullet_client)
-    button_green, toggleSphere_green = add_button_green(bullet_client)
-    button_blue, toggleSphere_blue = add_button_blue(bullet_client)
-    button_black, toggleSphere_black = add_button_black(bullet_client)
+    button_red, toggleSphere_red = add_button(bullet_client, position=(-0.48, 0.45), color=(1, 0, 0))
+    button_green, toggleSphere_green = add_button(bullet_client, position=(-0.38, 0.45), color=(0, 1, 0))
+    button_blue, toggleSphere_blue = add_button(bullet_client, position=(-0.28, 0.45), color=(0, 0, 1))
+
+    # button_red, toggleSphere_red = add_button_red(bullet_client)
+    # button_green, toggleSphere_green = add_button_green(bullet_client)
+    # button_blue, toggleSphere_blue = add_button_blue(bullet_client)
+    # button_black, toggleSphere_black = add_button_black(bullet_client)
     add_static(bullet_client)
 
     for b in range(0, num_objects):
@@ -86,8 +90,10 @@ def complex_scene(bullet_client, offset, flags, env_range_low, env_range_high, n
                                  lateralFriction=1.5)
         legos.append(legoUID)
         
+    # return legos, drawer, [door,button_red, button_green, button_blue, button_black, dial], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green), button_blue: ('button_blue', toggleSphere_blue), button_black: ('button_black', toggleSphere_black), dial: ('dial', toggleGrill)} # return the toggle sphere with it's joint index
 
-    return legos, drawer, [door,button_red, button_green, button_blue, button_black, dial], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green), button_blue: ('button_blue', toggleSphere_blue), button_black: ('button_black', toggleSphere_black), dial: ('dial', toggleGrill)} # return the toggle sphere with it's joint index
+    return legos, drawer, [door,button_red, button_green, button_blue, dial], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green),
+                                                                               button_blue: ('button_blue', toggleSphere_blue), dial: ('dial', toggleGrill)} # return the toggle sphere with it's joint index
 
 
 def add_static(bullet_client):
@@ -138,7 +144,8 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
         visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj', meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH, rgbaColor=[0,0,1,0.5])
         linkVisualShapeIndices = [visId]
     else:
-        visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj', meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH)
+        visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj',
+                                                meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH, rgbaColor=[0,0,1,0.5])
         if TEST_OLD:
                linkVisualShapeIndices = [-1]
         else:
@@ -186,16 +193,19 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
                                                            collisionFilterMask)
     return sphereUid
 
-def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
+
+def add_button(bullet_client, offset=np.array([0, 0, 0]), position=(-0.48, 0.45), color=(0,0,0), ghostly = False):
     sphereRadius = 0.02
     colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
                                                   halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
 
     mass = 0
     if ghostly:
-        rgbaColor = [1,0,0,0.5]
+        rgbaColor = list(color) + [0.5]
+        # rgbaColor = [1,0,0,0.5]
     else:
-        rgbaColor = [1,0,0,1]
+        rgbaColor = list(color) + [1]
+        # rgbaColor = [1,0,0,1]
 
     visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
                                                         halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
@@ -205,9 +215,9 @@ def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
     link_Masses = [0.1]
     linkCollisionShapeIndices = [colBoxId]
     linkVisualShapeIndices = [visualShapeId]
-    x = -0.48
-    y = 0.45
-    linkPositions = [[x,y, 0.8]]
+    x = position[0]
+    y = position[1]
+    linkPositions = [[x, y, 0.8]]
     linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
     linkInertialFramePositions = [[0, 0, 0]]
     linkInertialFrameOrientations = [[0, 0, 0, 1]]
@@ -240,242 +250,7 @@ def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
                                  spinningFriction=0.001,
                                  rollingFriction=0.001,
                                  linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-def add_button_green(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,1,0,0.5]
-    else:
-        rgbaColor = [0,1,0,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.38
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-def add_button_blue(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,0,1,0.5]
-    else:
-        rgbaColor = [0,0,1,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.28
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-
-def add_button_black(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,0,0,0.5]
-    else:
-        rgbaColor = [0,0,0,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.14
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
+    bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
 
 
     if ghostly:

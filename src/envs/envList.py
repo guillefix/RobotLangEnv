@@ -3,7 +3,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 print("current_dir=" + currentdir)
 os.sys.path.insert(0, currentdir)
 
-from environments import playEnv
+from src.envs.environments import playEnv
 
 class pandaReach(playEnv):
 	def __init__(self, num_objects = 0):

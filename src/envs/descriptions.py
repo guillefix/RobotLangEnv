@@ -1,5 +1,5 @@
 # from playground.env_params import get_env_params
-from env_params import get_env_params
+from src.envs.env_params import get_env_params
 
 
 def generate_all_descriptions(env_params):

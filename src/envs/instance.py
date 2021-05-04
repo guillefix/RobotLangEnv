@@ -36,7 +36,7 @@ class instance():
         flags = self.bullet_client.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
 
         if play:
-            self.objects, self.drawer, self.joints, self.toggles = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound,
+            self.objects, self.drawer, self.pad, self.joints, self.toggles = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound,
                                                                               num_objects)  # Todo: later, put this after the centering offset so that objects are centered around it too.
         else:
             self.objects = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound)
@@ -163,7 +163,7 @@ class instance():
 
         self.previous_state = self.extract_state(self.toggles.copy())
         self.state_buttons = dict(zip(self.previous_state.keys(), [False] * len(self.previous_state.keys())))
-
+        self.pad_color = [self.state_buttons[k] for k in [8, 10, 12]] + [1]
 
     # Adds the offset (i.e to actions or objects being created) so that all instances share an action/obs space
     def add_centering_offset(self, numbers):
@@ -180,10 +180,12 @@ class instance():
 
     # Checks if the button or dial was pressed, and changes the environment to reflect it
     def updateToggles(self):
+        switch = False
         for k, v in self.toggles.items():
             jointstate = self.bullet_client.getJointState(k, 0)[0]
             if self.previous_state[k] > 0 and jointstate < 0:
                 # switch color!
+                switch = True
                 self.state_buttons[k] = not self.state_buttons[k]
             if v[0] == 'button_red':
                 if self.state_buttons[k]:
@@ -200,6 +202,10 @@ class instance():
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[0, 0, 1, 1])
                 else:
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+        if switch:
+            # update pad color
+            self.pad_color = [self.state_buttons[k] for k in [8, 10, 12]] + [1]
+            self.bullet_client.changeVisualShape(7, -1, rgbaColor=self.pad_color)
 
 
     # Dyes the objects with the same color of current panel/grill
@@ -261,7 +267,8 @@ class instance():
             self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], self.drawer['defaults']['pos'],
                                                                self.drawer['defaults']['ori'])
             for i in self.joints:
-                self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
+                if i != 7:
+                    self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
 
         if obs is None:
             height_offset = 0.03
@@ -523,7 +530,7 @@ class instance():
             drawer_pos = self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]  # get the y pos
             object_states[i] = {'pos': [drawer_pos], 'orn': []}
             i += 1
-            for j in range(0, len(self.joints)):
+            for j in range(len(self.joints)):
                 data = self.bullet_client.getJointState(self.joints[j], 0)[0]
                 if j == 5:
                     # this is the dial

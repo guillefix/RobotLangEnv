@@ -186,7 +186,7 @@ class playEnv(gym.GoalEnv):
         #
         #     self.instance.reset(o)
         #     obs = self.instance.calc_state()
-            # r = self.compute_reward(obs['achieved_goal'], obs['desired_goal'])
+        #     r = self.compute_reward(obs['achieved_goal'], obs['desired_goal'])
 
         return obs
 

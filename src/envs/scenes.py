@@ -99,7 +99,8 @@ def complex_scene(bullet_client, offset, flags, env_range_low, env_range_high, n
         
     # return legos, drawer, [door,button_red, button_green, button_blue, button_black, dial], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green), button_blue: ('button_blue', toggleSphere_blue), button_black: ('button_black', toggleSphere_black), dial: ('dial', toggleGrill)} # return the toggle sphere with it's joint index
 
-    return legos, drawer, pad, [door,button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green),
+    return door, drawer, pad, legos, [door,button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green',
+                                                                                                                                                 toggleSphere_green),
                                                                          button_blue: ('button_blue', toggleSphere_blue)} # return the toggle sphere with it's joint index
 
 def sample_blocks(bullet_client, num_objects):
@@ -116,6 +117,7 @@ def sample_blocks(bullet_client, num_objects):
             sizes = [size] * 3
 
         rgb = color_dict[color].copy()
+        rgb = perturb_color(rgb)
         for j in range(len(rgb)):
             if rgb[j] == 1:
                 rgb[j] -= np.abs(np.random.randn()) * 0.1
@@ -133,6 +135,15 @@ def sample_blocks(bullet_client, num_objects):
                                      lateralFriction=1.5)
         legos.append(legoUID)
     return legos
+
+def perturb_color(rgb):
+    rgb = rgb.copy()
+    for j in range(len(rgb)):
+        if rgb[j] == 1:
+            rgb[j] -= np.abs(np.random.randn()) * 0.1
+        else:
+            rgb[j] += np.abs(np.random.randn()) * 0.1
+    return rgb.copy()
 
 
 def sample_obj_position(nb_objects=3):

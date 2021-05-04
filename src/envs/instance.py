@@ -36,7 +36,7 @@ class instance():
         flags = self.bullet_client.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
 
         if play:
-            self.objects, self.drawer, self.pad, self.joints, self.toggles = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound,
+             self.door, self.drawer, self.pad, self.objects, self.buttons, self.toggles = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound,
                                                                               num_objects)  # Todo: later, put this after the centering offset so that objects are centered around it too.
         else:
             self.objects = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound)
@@ -163,7 +163,8 @@ class instance():
 
         self.previous_state = self.extract_state(self.toggles.copy())
         self.state_buttons = dict(zip(self.previous_state.keys(), [False] * len(self.previous_state.keys())))
-        self.pad_color = [self.state_buttons[k] for k in [8, 10, 12]] + [1]
+        self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
+        self.state_dict = dict()
 
     # Adds the offset (i.e to actions or objects being created) so that all instances share an action/obs space
     def add_centering_offset(self, numbers):
@@ -177,6 +178,21 @@ class instance():
         offset = np.array(list(self.offset) * (len(numbers) // 3))
         numbers = numbers - offset
         return numbers
+
+    # Update color of object if set on the pad
+    def update_obj_colors(self):
+        for i, o in enumerate(self.objects):
+            pos = self.state_dict['obj_{}'.format(i)]
+            if (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>0:
+                rgb = self.pad_color.copy()
+                # for j in range(len(rgb)):
+                #     if rgb[j] == 1:
+                #         rgb[j] -= np.abs(np.random.randn()) * 0.1
+                #     else:
+                #         rgb[j] += np.abs(np.random.randn()) * 0.1
+                self.bullet_client.changeVisualShape(o, -1, rgbaColor=rgb)
+        # stop = 1
+
 
     # Checks if the button or dial was pressed, and changes the environment to reflect it
     def updateToggles(self):
@@ -204,8 +220,8 @@ class instance():
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
         if switch:
             # update pad color
-            self.pad_color = [self.state_buttons[k] for k in [8, 10, 12]] + [1]
-            self.bullet_client.changeVisualShape(7, -1, rgbaColor=self.pad_color)
+            self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
+            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=self.pad_color)
 
 
     # Dyes the objects with the same color of current panel/grill
@@ -232,6 +248,8 @@ class instance():
             self.updateToggles()  # so its got both in VR and replay out
         for i in range(0, 12):  # 25Hz control at 300
             self.bullet_client.stepSimulation()
+
+
 
     # Resets goal positions, if a goal is passed in - it will reset the goal to that position
     # def reset_goal_pos(self, goal=None):
@@ -266,9 +284,9 @@ class instance():
         if self.play:
             self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], self.drawer['defaults']['pos'],
                                                                self.drawer['defaults']['ori'])
-            for i in self.joints:
-                if i != 7:
-                    self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
+
+            for i in self.buttons:
+                self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
 
         if obs is None:
             height_offset = 0.03
@@ -518,25 +536,32 @@ class instance():
         Returns it as a dict of dicts, each one representing one object or 1D return in the environment
         '''
         object_states = {}
-        for i in range(0, self.num_objects):
+        for i in range(self.num_objects):
             pos, orn = self.bullet_client.getBasePositionAndOrientation(self.objects[i])
             vel = self.bullet_client.getBaseVelocity(self.objects[i])[0]
             object_states[i] = {'pos': self.subtract_centering_offset(pos), 'orn': orn, 'vel': vel}
+            self.state_dict['obj_{}'.format(i)] = object_states[i]['pos']
 
         # get things like hinges, doors, dials, buttons etc
 
         if self.play:
             i += 1
+            door_pos = self.bullet_client.getBasePositionAndOrientation(self.door)[0][0]  # get the x pos TODO: need to fix this, this does not work
+            print(door_pos)
+            object_states[i] = {'pos': [door_pos], 'orn': []}
+            self.state_dict['door'] = object_states[i]['pos']
+            i += 1
             drawer_pos = self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]  # get the y pos
             object_states[i] = {'pos': [drawer_pos], 'orn': []}
+            self.state_dict['drawer'] = object_states[i]['pos']
             i += 1
-            for j in range(len(self.joints)):
-                data = self.bullet_client.getJointState(self.joints[j], 0)[0]
-                if j == 5:
-                    # this is the dial
-                    data = dial_to_0_1_range(data)  # and put it just slightly below -1, 1
+            object_states[i] = {'pos': np.array(self.pad_color), 'orn': []}
+            self.state_dict['pad'] = object_states[i]['pos']
+            i += 1
+            for j in range(len(self.buttons)):
+                data = self.bullet_client.getJointState(self.buttons[j], 0)[0]
                 object_states[i + j] = {'pos': [data], 'orn': []}
-
+                self.state_dict['button_{}'.format(j)] = object_states[i]['pos']
         return object_states
 
     # Combines actor and environment state into vectors, and takes all the different slices one could want in a return dict

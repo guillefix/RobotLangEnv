@@ -213,6 +213,8 @@ class playEnv(gym.GoalEnv):
         targetPoses = self.instance.perform_action(action, self.action_type)
         self.instance.runSimulation()
         obs = self.instance.calc_state()
+        if self.play:
+            self.instance.update_obj_colors()
         # r = self.compute_reward(obs['achieved_goal'], obs['desired_goal'])
         done = False
         # success = 0 if r < 0 else 1

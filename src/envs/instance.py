@@ -10,7 +10,7 @@ import pybullet_data
 urdfRoot = pybullet_data.getDataPath()
 from src.envs.scenes import *
 from src.envs.inverseKinematics import InverseKinematicsSolver
-
+from copy import deepcopy
 lookat = [0, 0.0, 0.0]
 distance = 0.8
 yaw = 130
@@ -27,40 +27,33 @@ projectionMatrix = p.computeProjectionMatrixFOV(fov=50, aspect=1, nearVal=0.01, 
 # add/subtract centering offset functions.
 
 class instance():
-    def __init__(self, bullet_client, offset, load_scene, arm_lower_lim, arm_upper_lim,
-                 env_lower_bound, env_upper_bound, goal_lower_bound,
-                 goal_upper_bound, obj_lower_bound, obj_upper_bound, use_orientation, return_velocity, render_scene,
-                 fixed_gripper=False, play=False, show_goal=True, num_objects=0, arm_type='Panda'):
+    def __init__(self, env_params, bullet_client, offset, load_scene, arm_lower_lim, arm_upper_lim,
+                 env_lower_bound, env_upper_bound,
+                 obj_lower_bound, obj_upper_bound, use_orientation, return_velocity, render_scene,
+                 fixed_gripper=False, num_objects=0, arm_type='Panda', description=None):
         self.bullet_client = bullet_client
         self.bullet_client.setPhysicsEngineParameter(solverResidualThreshold=0)
         flags = self.bullet_client.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
-
-        if play:
-             self.door, self.drawer, self.pad, self.objects, self.buttons, self.toggles = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound,
-                                                                              num_objects)  # Todo: later, put this after the centering offset so that objects are centered around it too.
-        else:
-            self.objects = load_scene(self.bullet_client, offset, flags, env_lower_bound, env_upper_bound)
+        # Todo: later, put this after the centering offset so that objects are centered around it too.
+        self.door, self.drawer, self.pad, self.objects, self.objects_ids, self.buttons, self.toggles = load_scene(self.bullet_client, env_params,  offset, flags,
+                                                                                                                     env_lower_bound,
+                                                                                                    env_upper_bound,
+                                                                                                num_objects, description)
 
         self.num_objects = num_objects
+        self.env_params = env_params
         self.use_orientation = use_orientation
         self.return_velocity = return_velocity
-        self.num_objects = len(self.objects)
-        self.num_goals = max(self.num_objects, 1)
+        self.num_objects = len(self.objects_ids)
 
         self.arm_lower_lim = arm_lower_lim
         self.arm_upper_lim = arm_upper_lim
         self.env_upper_bound = env_upper_bound
         self.env_lower_bound = env_lower_bound
-        self.goal_upper_bound = goal_upper_bound
-        self.goal_lower_bound = goal_lower_bound
         self.obj_lower_bound = obj_lower_bound
         self.obj_upper_bound = obj_upper_bound
         self.render_scene = render_scene
-        self.play = play
         self.physics_client_active = 0
-        self.movable_goal = False
-        self.roving_goal = False
-        self.sub_goals = None
         self.fixed_gripper = fixed_gripper
         self.arm_type = arm_type
         if self.arm_type == 'Panda':
@@ -135,36 +128,13 @@ class instance():
         self.control_dt = 1. / 240.
         self.finger_target = 0
         self.gripper_height = 0.2
-        # create the goal objects
-        self.show_goal = show_goal
-        alpha = 1
-        self.obj_colors = [[1, 0, 0, alpha], [0, 1, 0, alpha], [0, 0, 1, alpha]]  # colors for three objects: red, green, blue
-        if self.render_scene and self.show_goal:
 
-            relativeChildOrientation = [0, 0, 0, 1]
-            self.goals = []
-            self.goal_cids = []
-            collisionFilterGroup = 0
-            collisionFilterMask = 0
-            for g in range(self.num_goals):
-                init_loc = self.add_centering_offset(np.array([0, 0.0, 0.2]))
-                visId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_SPHERE, radius=sphereRadius,
-                                                             rgbaColor=self.obj_colors[g])
-                self.goals.append(self.bullet_client.createMultiBody(mass, colSphereId, visId, init_loc))
-
-                self.bullet_client.setCollisionFilterGroupMask(self.goals[g], -1, collisionFilterGroup,
-                                                               collisionFilterMask)
-                self.goal_cids.append(
-                    self.bullet_client.createConstraint(self.goals[g], -1, -1, -1, self.bullet_client.JOINT_FIXED,
-                                                        [0, 0, 0], [0, 0, 0],
-                                                        init_loc, relativeChildOrientation))
-        for i in range(self.num_objects):
-            self.bullet_client.changeVisualShape(self.objects[i], -1, rgbaColor=self.obj_colors[i])
-
-        self.previous_state = self.extract_state(self.toggles.copy())
-        self.state_buttons = dict(zip(self.previous_state.keys(), [False] * len(self.previous_state.keys())))
+        self.previous_button_state = self.extract_state(self.toggles.copy())
+        self.button_state = self.previous_button_state.copy()
+        self.state_buttons = dict(zip(self.previous_button_state.keys(), [False] * len(self.previous_button_state.keys())))
         self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
         self.state_dict = dict()
+        self.state = None
 
     # Adds the offset (i.e to actions or objects being created) so that all instances share an action/obs space
     def add_centering_offset(self, numbers):
@@ -179,29 +149,50 @@ class instance():
         numbers = numbers - offset
         return numbers
 
+    def check_on_pad(self, pos):
+        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>0
+
     # Update color of object if set on the pad
     def update_obj_colors(self):
         for i, o in enumerate(self.objects):
-            pos = self.state_dict['obj_{}'.format(i)]
-            if (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>0:
-                rgb = self.pad_color.copy()
-                # for j in range(len(rgb)):
-                #     if rgb[j] == 1:
-                #         rgb[j] -= np.abs(np.random.randn()) * 0.1
-                #     else:
-                #         rgb[j] += np.abs(np.random.randn()) * 0.1
-                self.bullet_client.changeVisualShape(o, -1, rgbaColor=rgb)
-        # stop = 1
-
+            if self.previous_state_dict is not None:
+                previous_pos = self.previous_state_dict['obj_{}_{}'.format(i, 'pos')]
+                pos = o.position
+                print(previous_pos)
+                print(pos)
+                # button_switch = False
+                # for k in self.button_state.keys():
+                #     if self.button_state[k] != self.previous_button_state[k]:
+                #         button_switch = True
+                #         break
+                if self.check_on_pad(pos) and (not self.check_on_pad(previous_pos) or self.switch):
+                    rgb = self.pad_color.copy()
+                    for j in range(len(rgb)-1):
+                        if rgb[j] == 1:
+                            rgb[j] -= np.random.uniform(0, 0.2)
+                        else:
+                            rgb[j] += np.random.uniform(0, 0.2)
+                    o.update_color(rgb_dict[str([int(c) for c in self.pad_color[:-1]])], rgb)
+            else:
+                pos = o.position
+                if self.check_on_pad(pos):
+                    rgb = self.pad_color.copy()
+                    for j in range(len(rgb)-1):
+                        if rgb[j] == 1:
+                            rgb[j] -= np.random.uniform(0, 0.2)
+                        else:
+                            rgb[j] += np.random.uniform(0, 0.2)
+                    o.update_color(rgb_dict[str([int(c) for c in self.pad_color[:-1]])], rgb)
 
     # Checks if the button or dial was pressed, and changes the environment to reflect it
     def updateToggles(self):
-        switch = False
+        self.switch = False
         for k, v in self.toggles.items():
             jointstate = self.bullet_client.getJointState(k, 0)[0]
-            if self.previous_state[k] > 0 and jointstate < 0:
+            self.button_state[k] = jointstate
+            if self.previous_button_state[k] > 0 and jointstate < 0:
                 # switch color!
-                switch = True
+                self.switch = True
                 self.state_buttons[k] = not self.state_buttons[k]
             if v[0] == 'button_red':
                 if self.state_buttons[k]:
@@ -218,7 +209,7 @@ class instance():
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[0, 0, 1, 1])
                 else:
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
-        if switch:
+        if self.switch:
             # update pad color
             self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
             self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=self.pad_color)
@@ -228,8 +219,8 @@ class instance():
     # def dyeObjects(self):
     #     for i in range(self.num_objects):
     #         self.bullet_client.performCollisionDetection()
-    #         if self.bullet_client.getContactPoints(self.objects[i], self.toggles) == None:
-    #             self.bullet_client.changeVisualShape(self.objects[i], -1, rgbaColor=self.obj_colors[i])
+    #         if self.bullet_client.getContactPoints(self.objects_ids[i], self.toggles) == None:
+    #             self.bullet_client.changeVisualShape(self.objects_ids[i], -1, rgbaColor=self.obj_colors[i])
 
     def extract_state(self, toggles):
         to_save = dict()
@@ -242,62 +233,33 @@ class instance():
     # Takes environment steps s.t the sim runs at 25 Hz
     def runSimulation(self):
 
-        self.previous_state = self.extract_state(self.toggles.copy())
+        self.previous_button_state = self.extract_state(self.toggles.copy())
         # also do toggle updating here
-        if self.play:
-            self.updateToggles()  # so its got both in VR and replay out
+        self.updateToggles()  # so its got both in VR and replay out
+        for o in self.objects:
+            o.update_position()
         for i in range(0, 12):  # 25Hz control at 300
             self.bullet_client.stepSimulation()
-
-
-
-    # Resets goal positions, if a goal is passed in - it will reset the goal to that position
-    # def reset_goal_pos(self, goal=None):
-    #     if goal is None:
-    #         self.goal = []
-    #         for g in range(self.num_goals):
-    #             goal = np.random.uniform(self.goal_lower_bound, self.goal_upper_bound)
-    #             self.goal.append(goal)
-    #         self.goal = np.concatenate(self.goal)
-    #     else:
-    #
-    #         self.goal = np.array(goal)
-    #     if self.render_scene and self.show_goal:
-    #         index = 0
-    #
-    #         for g in range(self.num_goals):
-    #             pos = self.add_centering_offset(self.goal[index:index + 3])
-    #             self.bullet_client.resetBasePositionAndOrientation(self.goals[g], pos, [0, 0, 0, 1])
-    #             self.bullet_client.changeConstraint(self.goal_cids[g], pos, maxForce=100)
-    #             index += 3
-    #
-    #     if self.play:
-    #         # Unless specified by an external party, just set the goal to a random pertubation of the existing state
-    #         c = self.calc_state()['achieved_goal']
-    #         random_index = np.random.choice(len(c))
-    #         c[random_index] += np.random.random()
-    #         self.goal = c
 
     # Resets object positions, if an obs is passed in - the objects will be reset using that
     def reset_object_pos(self, obs=None):
         # Todo object velocities to make this properly deterministic
-        if self.play:
-            self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], self.drawer['defaults']['pos'],
-                                                               self.drawer['defaults']['ori'])
+        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], self.drawer['defaults']['pos'],
+                                                           self.drawer['defaults']['ori'])
 
-            for i in self.buttons:
-                self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
+        for i in self.buttons:
+            self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
 
         if obs is None:
             height_offset = 0.03
-            for o in self.objects:
+            for o in self.objects_ids:
                 pos = self.add_centering_offset(np.random.uniform(self.obj_lower_bound, self.obj_upper_bound))
                 pos[2] = pos[2] + height_offset  # so they don't collide
                 self.bullet_client.resetBasePositionAndOrientation(o, pos, [0.0, 0.0, 0.7071, 0.7071])
                 height_offset += 0.03
             for i in range(0, 100):
                 self.bullet_client.stepSimulation()  # let everything fall into place, falling in to piecees...
-            for o in self.objects:
+            for o in self.objects_ids:
                 # print(self.env_upper_bound, self.bullet_client.getBasePositionAndOrientation(o)[0])
                 if (self.subtract_centering_offset(self.bullet_client.getBasePositionAndOrientation(o)[0]) > self.env_upper_bound).any():
                     self.reset_object_pos()
@@ -310,7 +272,7 @@ class instance():
             else:
                 index = 7
                 increment = 6
-            for o in self.objects:
+            for o in self.objects_ids:
                 pos = obs[index:index + 3]
                 if self.use_orientation:
                     orn = obs[index + 3:index + 7]
@@ -342,7 +304,8 @@ class instance():
 
         orn = self.default_arm_orn
         if o is None:
-            new_pos = self.add_centering_offset(np.random.uniform(self.goal_lower_bound, self.goal_upper_bound))
+            # new_pos = self.add_centering_offset(np.random.uniform(self.goal_lower_bound, self.goal_upper_bound))
+            new_pos = self.add_centering_offset(np.array([0, 0.15, 0.055]))
             if self.arm_type == 'UR5':
                 new_pos[2] = new_pos[2] + 0.2
         else:
@@ -362,124 +325,14 @@ class instance():
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
     def reset(self, o=None):
+        self.state_dict = dict()
+        self.state = None
         self.reset_object_pos(o)
         self.reset_arm(self.arm, o)
-        # self.reset_goal_pos()
+        for o in self.objects:
+            o.update_position()
         self.t = 0
 
-    # Visualises the sub-goal passed to it as transparent version of the current goals (whether environment pieces, or the arm itself in reaching tasks)
-    # def visualise_sub_goal(self, sub_goal, sub_goal_state='achieved_goal'):
-    #     '''
-    #     Supports a number of different types of goal, all of which are returned by the 'calc_state' function
-    #     Full positional state : This is every (non velocity) aspect of the obs as a goal
-    #     Controllable achieved goal : Only the aspects of the env that are controllable, i.e its own pos/ori, not object
-    #     Achieved goal : Only the non controllable aspects of the env, i.e objects, not its own pos/ori
-    #     '''
-    #     if self.sub_goals is None:
-    #         # in the case of ag, num objects = 0 we want just ghost arm
-    #         # ag, num object > 1, we want spheres per object
-    #         # in the case of controllable we just want ghost arm pos
-    #         # in the case of full positional, we want ghost arm + num objects sphere
-    #         self.sub_goals = []
-    #         collisionFilterGroup = 0
-    #         collisionFilterMask = 0
-    #         if sub_goal_state == 'full_positional_state' or sub_goal_state == 'controllable_achieved_goal':
-    #             flags = self.bullet_client.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
-    #             # flags = self.bullet_client.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
-    #             if self.arm_type == 'Panda':
-    #                 self.ghost_arm = self.bullet_client.loadURDF(
-    #                     os.path.dirname(os.path.abspath(__file__)) + "/franka_panda/ghost_panda.urdf", self.init_arm_base_pos + self.original_offset,
-    #                     self.init_arm_base_orn, useFixedBase=True, flags=flags)
-    #             else:
-    #                 raise NotImplementedError
-    #
-    #             self.bullet_client.setCollisionFilterGroupMask(self.ghost_panda, -1, collisionFilterGroup, collisionFilterMask)
-    #             for i in range(0, self.bullet_client.getNumJoints(self.ghost_arm)):
-    #                 self.bullet_client.setCollisionFilterGroupMask(self.ghost_arm, i, collisionFilterGroup,
-    #                                                                collisionFilterMask)
-    #             self.reset_arm_joints(self.ghost_arm, self.restJointPositions)  # put it into a good init for IK
-    #
-    #         if sub_goal_state == 'full_positional_state' or sub_goal_state is 'achieved_goal':
-    #             sphereRadius = 0.03
-    #             mass = 0
-    #             colSphereId = self.bullet_client.createCollisionShape(p.GEOM_SPHERE, radius=sphereRadius)
-    #             if sub_goal_state == 'full_positional_state':
-    #                 if self.use_orientation:
-    #                     index = 8
-    #                 else:
-    #                     index = 4
-    #             if sub_goal_state == 'achieved_goal':
-    #                 index = 0
-    #             for i in range(0, self.num_objects):
-    #                 color = self.obj_colors[i]
-    #                 color[3] = 0.5  # set alpha to 0.5 for ghostly subgoal appearance
-    #                 if self.play:
-    #                     extents = [0.025 * 2, 0.025, 0.025]
-    #                 else:
-    #                     extents = [0.03, 0.03, 0.03]
-    #
-    #                 visId = p.createVisualShape(p.GEOM_BOX, halfExtents=extents,
-    #                                             rgbaColor=color)
-    #                 self.sub_goals.append(self.bullet_client.createMultiBody(mass, colSphereId, visId, sub_goal[index:index + 3]))
-    #                 self.bullet_client.setCollisionFilterGroupMask(self.sub_goals[i], -1, collisionFilterGroup,
-    #                                                                collisionFilterMask)
-    #                 index += 3
-    #
-    #         if self.play:
-    #             self.ghost_drawer = add_drawer(self.bullet_client, ghostly=True)
-    #             door = add_door(self.bullet_client, ghostly=True)
-    #             button_red, toggleSphere_red = add_button_red(self.bullet_client, ghostly=True)
-    #             button_green, toggleSphere_green = add_button_green(self.bullet_client, ghostly=True)
-    #             button_blue, toggleSphere_blue = add_button_blue(self.bullet_client, ghostly=True)
-    #             button_black, toggleSphere_black = add_button_black(self.bullet_client, ghostly=True)
-    #             dial, toggleGrill = add_dial(self.bullet_client, ghostly=True)  # , thickness = thickness) 1.5
-    #
-    #             self.ghost_joints = [door, button_red, button_green, button_blue, button_black, dial]
-    #
-    #     if sub_goal_state == 'controllable_achieved_goal':
-    #         self.reset_arm(self.ghost_arm, sub_goal, from_init=False)
-    #     elif sub_goal_state == 'full_positional_state':
-    #         self.reset_arm(self.ghost_arm, sub_goal, from_init=False)
-    #         if self.use_orientation:
-    #             index = 8
-    #         else:
-    #             index = 4
-    #     elif sub_goal_state == 'achieved_goal':
-    #         index = 0
-    #
-    #     if sub_goal_state != 'controllable_achieved_goal':
-    #         for i in range(0, self.num_objects):
-    #             if self.use_orientation:
-    #                 self.bullet_client.resetBasePositionAndOrientation(self.sub_goals[i], self.add_centering_offset(
-    #                     sub_goal[index:index + 3]), sub_goal[index + 3:index + 7])
-    #                 index += 7
-    #             else:
-    #                 self.bullet_client.resetBasePositionAndOrientation(self.sub_goals[i], self.add_centering_offset(sub_goal[index:index + 3]), [0, 0, 0, 1])
-    #                 index += 3
-    #
-    #     if self.play:
-    #         drawer_pos = self.ghost_drawer['defaults']['pos']
-    #         drawer_pos[1] = sub_goal[index]
-    #
-    #         self.bullet_client.resetBasePositionAndOrientation(self.ghost_drawer['drawer'], drawer_pos, self.ghost_drawer['defaults']['ori'])
-    #         index += 1
-    #         for i, j in enumerate(self.ghost_joints):
-    #             # print(index+i)
-    #             self.bullet_client.resetJointState(j, 0, sub_goal[index + i])  # reset drawer, button etc
-
-    # Deletes the sub-goal viz, as pyBullet's state reset does not work if extra objects are in the scene
-    # def delete_sub_goal(self):
-    #     for i in self.sub_goals:
-    #         self.bullet_client.removeBody(i)
-    #     self.sub_goals = None
-    #     for i in self.ghost_joints:
-    #         self.bullet_client.removeBody(i)
-    #     self.bullet_client.removeBody(self.ghost_drawer['drawer'])
-    #
-    #     try:
-    #         self.bullet_client.removeBody(self.ghost_arm)
-    #     except:
-    #         pass
 
     # Binary return indicating if something is between the gripper prongs, currently unused.
     def gripper_proprioception(self):
@@ -528,49 +381,23 @@ class instance():
         return {'pos': self.subtract_centering_offset(pos), 'orn': orn, 'pos_vel': vel, 'orn_vel': orn_vel,
                 'gripper': gripper_state, 'joints': joint_poses, 'proprioception': self.gripper_proprioception()}
 
-    # Calculates the state of the environment
-    def calc_environment_state(self):
-        '''
-        First gets the pos (xyz) and orn (q1-4) of each object in the scene, then gets play specific objects
-        in order drawer, door, button, dial. E.g, a 1 object scene will have an 11D return from this
-        Returns it as a dict of dicts, each one representing one object or 1D return in the environment
-        '''
-        object_states = {}
-        for i in range(self.num_objects):
-            pos, orn = self.bullet_client.getBasePositionAndOrientation(self.objects[i])
-            vel = self.bullet_client.getBaseVelocity(self.objects[i])[0]
-            object_states[i] = {'pos': self.subtract_centering_offset(pos), 'orn': orn, 'vel': vel}
-            self.state_dict['obj_{}'.format(i)] = object_states[i]['pos']
 
-        # get things like hinges, doors, dials, buttons etc
-
-        if self.play:
-            i += 1
-            door_pos = self.bullet_client.getBasePositionAndOrientation(self.door)[0][0]  # get the x pos TODO: need to fix this, this does not work
-            print(door_pos)
-            object_states[i] = {'pos': [door_pos], 'orn': []}
-            self.state_dict['door'] = object_states[i]['pos']
-            i += 1
-            drawer_pos = self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]  # get the y pos
-            object_states[i] = {'pos': [drawer_pos], 'orn': []}
-            self.state_dict['drawer'] = object_states[i]['pos']
-            i += 1
-            object_states[i] = {'pos': np.array(self.pad_color), 'orn': []}
-            self.state_dict['pad'] = object_states[i]['pos']
-            i += 1
-            for j in range(len(self.buttons)):
-                data = self.bullet_client.getJointState(self.buttons[j], 0)[0]
-                object_states[i + j] = {'pos': [data], 'orn': []}
-                self.state_dict['button_{}'.format(j)] = object_states[i]['pos']
-        return object_states
 
     # Combines actor and environment state into vectors, and takes all the different slices one could want in a return dict
     # Vector size is different depending on whether you are returning just pos, pos & orn, pos, orn & vel etc as specified
     # Keys to know :  observation (full state, no vel), achieved_goal (just environment state), desired_goal (currently specified goal)
     def calc_state(self):
+        if self.state == None:
+            self.previous_state = None
+            self.previous_state_dict = None
+        else:
+            self.previous_state_dict = deepcopy(self.state_dict)
+            self.previous_state = self.state.copy()
 
-        if self.play:
-            self.updateToggles()  # good place to update the toggles
+        self.updateToggles()  # good place to update the toggles
+        self.update_obj_colors() # paint object
+
+
         arm_state = self.calc_actor_state()
         arm_elements = ['pos']
         if self.return_velocity:
@@ -579,35 +406,21 @@ class instance():
             arm_elements.append('orn')
         arm_elements.append('gripper')
         state = np.concatenate([np.array(arm_state[i]) for i in arm_elements])
-        if self.num_objects > 0:
+        self.state_dict['arm_state'] = state.copy()
 
-            env_state = self.calc_environment_state()
-            obj_elements = ['pos']
-            if self.use_orientation:
-                obj_elements.append('orn')
-            if self.return_velocity:
-                obj_elements.append('vel')
+        # get objects features
+        objects_features = [o.get_features() for o in self.objects]
+        object_states = dict()
+        for i, o in enumerate(objects_features):
+            for k, v in o.items():
+                object_states['obj_{}_{}'.format(i, k)] = v
+                self.state_dict['obj_{}_{}'.format(i, k)] = v
 
-            obj_states = []
-            for i, obj in env_state.items():
-                o_s = []
-                for key in obj_elements:
-                    o_s += list(obj[key])
-                obj_states.append(np.array(o_s))
-
-            obj_states = np.concatenate(obj_states)
-
-            if self.use_orientation:
-                state = np.concatenate([state, obj_states])
-                achieved_goal = np.concatenate([np.array(list(obj['pos']) + list(obj['orn'])) for (i, obj) in env_state.items()])
-                full_positional_state = np.concatenate([arm_state['pos'], arm_state['orn'], arm_state['gripper'], achieved_goal])
-            else:
-                state = np.concatenate([state, obj_states])
-                achieved_goal = np.concatenate([obj['pos'] for (i, obj) in env_state.items()])
-                full_positional_state = np.concatenate([arm_state['pos'], arm_state['gripper'], achieved_goal])
-        else:
-            achieved_goal = arm_state['pos']
-            full_positional_state = np.concatenate([arm_state['pos'], arm_state['gripper']])
+        self.state_dict['door_pos'] = np.array([self.bullet_client.getBasePositionAndOrientation(self.door)[0][0]])  # get the x pos TODO: need to fix this, this does not work
+        self.state_dict['drawer_pos'] = np.array([self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]])  # get the y pos
+        self.state_dict['pad_color'] = np.array(self.pad_color)
+        for j in range(len(self.buttons)):
+            self.state_dict['button_{}'.format(j)] = np.array([self.bullet_client.getJointState(self.buttons[j], 0)[0]])
 
         if self.record_images:
             img_arr = self.bullet_client.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=self.bullet_client.ER_NO_SEGMENTATION_MASK, shadow=0,
@@ -615,22 +428,39 @@ class instance():
         else:
             img_arr = None
 
-        if self.play:
-            state, achieved_goal = self.quaternion_safe_the_obs(state, achieved_goal)
+        # fix flipping of
+        # PyBullet randomly returns equivalent quaternions (e.g, one timestep it will return the -ve of the previous quat)
+        # For a smooth state signal, flip the quaternion if all elements are -ive of prev step
+        for k, v in self.state_dict.items():
+            if 'orientation' in k:
+                quat = v
+                last_quat = self.previous_state_dict[k]
+                if (np.sign(quat) == -np.sign(last_quat)).all():
+                    self.state_dict[k] = -v
+
+        state = np.concatenate(list(self.state_dict.values()))
+
+
+        self.state_dict_euler = deepcopy(self.state_dict)
+        for k, v in self.state_dict.items():
+            print(k)
+            if 'orn' in k:
+                self.state_dict_euler[k] = p.getEulerFromQuaternion(v)
+        state_euler = np.concatenate(list(self.state_dict_euler.values()))
+
         return_dict = {
             'obs_quat': state.copy().astype('float32'),
-            # 'achieved_goal': achieved_goal.copy().astype('float32'),
-            # 'desired_goal': self.goal.copy().astype('float32'),
-            'controllable_achieved_goal': np.concatenate([arm_state['pos'].copy(), arm_state['gripper'].copy()]).astype('float32'),
             # just the x,y,z pos of the self, the controllable aspects
-            'full_positional_state': full_positional_state.copy().astype('float32'),
             'joints': arm_state['joints'],
             'velocity': np.concatenate([arm_state['pos_vel'], arm_state['orn_vel']]),
             'img': img_arr,
-            'observation': np.concatenate([state[0:3], p.getEulerFromQuaternion(state[3:7]), state[7:]]).copy(),
+            'observation': state_euler.copy(),
             'gripper_proprioception': arm_state['proprioception']
         }
-
+        
+        self.state = return_dict.copy()
+        if self.previous_state == None:
+            self.previous_state = self.state
         return return_dict
 
     # PyBullet randomly returns equivalent quaternions (e.g, one timestep it will return the -ve of the previous quat)

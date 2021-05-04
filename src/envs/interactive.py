@@ -40,20 +40,19 @@ def main():
 
         if joint_control:
             poses  = []
-            for i in range(0, len(env.instance.restJointPositions)):
+            for i in range(len(env.instance.restJointPositions)):
                 poses.append(env.p.readUserDebugParameter(i))
             # Uses a hard reset of the arm joints so that we can quickly debug without worrying about forces
             env.instance.reset_arm_joints(env.instance.arm, poses)
 
         else:
             action = []
-            for i in range(0, len(controls)):
+            for i in range(len(controls)):
                 action.append(env.p.readUserDebugParameter(i))
 
             state = env.instance.calc_actor_state()
             obs, r, done, info = env.step(np.array(action))
-            print(r)
-             
+
             # Shows the block position just above where it is
             # x = obs['achieved_goal']
             # x[2] += 0.1

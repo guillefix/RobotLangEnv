@@ -6,7 +6,7 @@ from src.envs.color_generation import *
 def get_env_params(max_nb_objects=3,
                    admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),
                    admissible_attributes=('colors', 'categories', 'types'),
-                   min_max_sizes=((0.2, 0.25), (0.25, 0.3)),
+                   min_max_sizes=(0.02, 0.03),
                    agent_size=0.05,
                    epsilon_initial_pos=0.3,
                    screen_size=800,
@@ -49,17 +49,18 @@ def get_env_params(max_nb_objects=3,
     """
 
     # list objects and categories
-    geometric_solid = ('small cube', 'big cube', 'cone', 'cylinder', 'sphere')
+    geometric_solid = ('cube', 'block', 'cylinder')
     kitchen_ware = ('bottle', 'bowl', 'plate', 'cup', 'spoon')
     animal_model = ('bear', 'bird', 'cat', 'fish', 'elephant')
     food_model = ('apple', 'banana', 'cookie', 'donut', 'sandwich')
-    transportation_model = ('train', 'plane', 'car', 'bike', 'bus')
+    vehicles_model = ('train', 'plane', 'car', 'bike', 'bus')
 
     categories = dict(solid = geometric_solid,
                       kitchenware = kitchen_ware,
                       animal = animal_model,
                       food = food_model,
-                      transportation = transportation_model)
+                      vehicle = vehicles_model,
+                      )
     # List types
     types = ()
     for k_c in categories.keys():
@@ -137,6 +138,7 @@ def get_env_params(max_nb_objects=3,
                   grasped_inds=grasped_inds,
                   attributes=attributes,
                   categories=categories,
+                  types=types,
                   name_attributes=name_attributes,
                   colors_attributes = colors_attributes,
                   positions_attributes = positions_attributes,

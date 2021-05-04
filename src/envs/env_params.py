@@ -4,7 +4,7 @@ import os
 from color_generation import *
 
 def get_env_params(max_nb_objects=3,
-                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Color'),
+                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),
                    admissible_attributes=('colors', 'categories', 'types'),
                    min_max_sizes=((0.2, 0.25), (0.25, 0.3)),
                    agent_size=0.05,
@@ -68,11 +68,15 @@ def get_env_params(max_nb_objects=3,
     nb_types = len(types)
 
     # List attributes + others
-    colors = ('red', 'dark red', 'green', 'dark green', 'blue', 'dark blue', 'yellow', 'dark yellow', 'magenta', 'dark magenta', 'cyan', 'dark cyan', 'white', 'gray', 'black')
+    # colors = ('red', 'dark red', 'green', 'dark green', 'blue', 'dark blue', 'yellow', 'dark yellow', 'magenta', 'dark magenta', 'cyan', 'dark cyan', 'white', 'gray', 'black')
+    colors = list(('red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'white', 'black'))
+    # for c in colors.copy():
+    #     colors.append('dark ' + c)
+    colors = tuple(colors)
     positions = ('on the left side of the table', 'on the right side of the table', 'on the shelf', 'behind the door', 'in the drawer')
     drawer_door = ('drawer', 'door')
     any_all = ('any', 'all')
-    rgbb = ('red', 'green', 'blue', 'black')
+    rgbb = ('red', 'green', 'blue')
 
     attributes = dict(types=types,
                       categories=tuple(categories.keys()),

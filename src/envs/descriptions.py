@@ -102,17 +102,20 @@ def generate_all_descriptions(env_params):
             make_descriptions.append('Make the panel {}'.format(c))
         all_descriptions += tuple(make_descriptions)
 
-
-    if 'Color' in p['admissible_actions']:
+    if 'Paint' in p['admissible_actions']:
         color_descriptions = []
         for a in any_all_attributes:
             for c1 in colors_attributes:
-                for c2 in tuple(list(set(list(colors_attributes)) - set(list(c1)))):
-                    color_descriptions.append('Color {} {} object {}'.format(a, c1, c2))
+                for c2 in sorted(tuple(set(colors_attributes) - set(list(c1)))):
+                    color_descriptions.append('Paint {} {} object {}'.format(a, c1, c2))
         for c1 in colors_attributes:
             for n in name_attributes:
-                for c2 in tuple(list(set(list(colors_attributes)) - set(list(c1)))):
-                    color_descriptions.append('Color {} {} {}'.format(c1, n, c2))
+                for c2 in sorted(tuple(set(colors_attributes) - set([c1]))):
+                    color_descriptions.append('Paint {} {} {}'.format(c1, n, c2))
+        for a in any_all_attributes:
+            for n in name_attributes:
+                for c2 in colors_attributes:
+                    color_descriptions.append('Paint {} {} {}'.format(a, n, c2))
         all_descriptions += tuple(color_descriptions)
 
 

@@ -6,7 +6,6 @@ TEST_OLD = True
 
 color_dict = dict(red=[1, 0, 0], green=[0, 1, 0], blue=[0, 0, 1], magenta=[1, 0, 1], yellow=[1, 1, 0], cyan=[0, 1, 1], black=[0, 0, 0], white=[1, 1, 1])
 rgb_dict = dict(zip([str([int(c) for c in v]) for v in list(color_dict.values())], list(color_dict.keys())))
-table_ranges = [(-0.55, 0.55), (0., 0.35)]
 
 
 def complex_scene(bullet_client, env_params, offset, flags, env_range_low, env_range_high, num_objects, description=None):
@@ -87,6 +86,7 @@ def sample_objects(env_params, bullet_client, objects_to_add, num_objects):
     objects = [objects[i] for i in inds]
     objects_ids = [objects_ids[i] for i in inds]
     objects_types = [objects_types[i] for i in inds]
+    print(objects_types)
     return objects, objects_ids, objects_types
 
 
@@ -354,9 +354,9 @@ def add_pad(bullet_client, offset=np.array([0, 0, 0]), flags=None, thickness = 1
     width = 0.17
 
     colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                     halfExtents=[width, width, 0.01])
+                                                     halfExtents=[width, width, 0.006])
     visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                    halfExtents=[width, width, 0.01],
+                                                    halfExtents=[width, width, 0.006],
                                                     rgbaColor=[0, 0, 0, 1])
     pad = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [0, 0.15, -0.03],
                                                 baseOrientation)

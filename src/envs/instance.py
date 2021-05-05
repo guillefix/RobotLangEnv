@@ -133,6 +133,9 @@ class instance():
         self.button_state = self.previous_button_state.copy()
         self.state_buttons = dict(zip(self.previous_button_state.keys(), [False] * len(self.previous_button_state.keys())))
         self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
+        pad_color = list(np.array([float(self.state_buttons[k]) for k in [8, 10, 12]]) * 0.5 + 0.5 * np.array([0.5] * 3)) + [1]
+        self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
+
         self.state_dict = dict()
         self.state = None
 
@@ -150,7 +153,7 @@ class instance():
         return numbers
 
     def check_on_pad(self, pos):
-        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>0
+        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>-0.025
 
     # Update color of object if set on the pad
     def update_obj_colors(self):
@@ -158,13 +161,6 @@ class instance():
             if self.previous_state_dict is not None:
                 previous_pos = self.previous_state_dict['obj_{}_{}'.format(i, 'pos')]
                 pos = o.position
-                print(previous_pos)
-                print(pos)
-                # button_switch = False
-                # for k in self.button_state.keys():
-                #     if self.button_state[k] != self.previous_button_state[k]:
-                #         button_switch = True
-                #         break
                 if self.check_on_pad(pos) and (not self.check_on_pad(previous_pos) or self.switch):
                     rgb = self.pad_color.copy()
                     for j in range(len(rgb)-1):
@@ -212,7 +208,8 @@ class instance():
         if self.switch:
             # update pad color
             self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
-            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=self.pad_color)
+            pad_color = list(np.array([float(self.state_buttons[k]) for k in [8, 10, 12]]) * 0.5  + 0.5 * np.array([0.5]*3)) + [1]
+            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
 
 
     # Dyes the objects with the same color of current panel/grill
@@ -236,50 +233,63 @@ class instance():
         self.previous_button_state = self.extract_state(self.toggles.copy())
         # also do toggle updating here
         self.updateToggles()  # so its got both in VR and replay out
-        for o in self.objects:
-            o.update_position()
+
         for i in range(0, 12):  # 25Hz control at 300
             self.bullet_client.stepSimulation()
+        for o in self.objects:
+            o.update_position()
 
     # Resets object positions, if an obs is passed in - the objects will be reset using that
     def reset_object_pos(self, obs=None):
         # Todo object velocities to make this properly deterministic
-        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], self.drawer['defaults']['pos'],
+        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'],
+                                                           self.drawer['defaults']['pos'],
                                                            self.drawer['defaults']['ori'])
 
+        self.bullet_client.resetJointState(self.door, 0, 0)  # reset door
         for i in self.buttons:
-            self.bullet_client.resetJointState(i, 0, 0)  # reset door, button etc
+            self.bullet_client.resetJointState(i, 0, 0)  # reset button etc
 
-        if obs is None:
-            height_offset = 0.03
-            for o in self.objects_ids:
-                pos = self.add_centering_offset(np.random.uniform(self.obj_lower_bound, self.obj_upper_bound))
-                pos[2] = pos[2] + height_offset  # so they don't collide
-                self.bullet_client.resetBasePositionAndOrientation(o, pos, [0.0, 0.0, 0.7071, 0.7071])
-                height_offset += 0.03
-            for i in range(0, 100):
-                self.bullet_client.stepSimulation()  # let everything fall into place, falling in to piecees...
-            for o in self.objects_ids:
-                # print(self.env_upper_bound, self.bullet_client.getBasePositionAndOrientation(o)[0])
-                if (self.subtract_centering_offset(self.bullet_client.getBasePositionAndOrientation(o)[0]) > self.env_upper_bound).any():
-                    self.reset_object_pos()
+        objs = []
+        for o in self.objects:
+            o.sample_position(objs)
+            objs.append(o)
+        for _ in range(100):
+            self.bullet_client.stepSimulation()
+        for o in self.objects:
+            o.update_position()
 
-        else:
 
-            if self.use_orientation:
-                index = 11
-                increment = 10
-            else:
-                index = 7
-                increment = 6
-            for o in self.objects_ids:
-                pos = obs[index:index + 3]
-                if self.use_orientation:
-                    orn = obs[index + 3:index + 7]
-                else:
-                    orn = [0, 0, 0, 1]
-                self.bullet_client.resetBasePositionAndOrientation(o, self.add_centering_offset(pos), orn)
-                index += increment
+        # # if obs is None:
+        # height_offset = 0.03
+        # for o in self.objects_ids:
+        #     pos = self.add_centering_offset(np.random.uniform(self.obj_lower_bound, self.obj_upper_bound))
+        #     pos[2] = pos[2] + height_offset  # so they don't collide
+        #     self.bullet_client.resetBasePositionAndOrientation(o, pos, [0.0, 0.0, 0.7071, 0.7071])
+        #     height_offset += 0.03
+        # for i in range(0, 100):
+        #     self.bullet_client.stepSimulation()  # let everything fall into place, falling in to piecees...
+        # for o in self.objects_ids:
+        #     # print(self.env_upper_bound, self.bullet_client.getBasePositionAndOrientation(o)[0])
+        #     if (self.subtract_centering_offset(self.bullet_client.getBasePositionAndOrientation(o)[0]) > self.env_upper_bound).any():
+        #         self.reset_object_pos()
+        #
+        # else:
+        #
+        #     if self.use_orientation:
+        #         index = 11
+        #         increment = 10
+        #     else:
+        #         index = 7
+        #         increment = 6
+        #     for o in self.objects_ids:
+        #         pos = obs[index:index + 3]
+        #         if self.use_orientation:
+        #             orn = obs[index + 3:index + 7]
+        #         else:
+        #             orn = [0, 0, 0, 1]
+        #         self.bullet_client.resetBasePositionAndOrientation(o, self.add_centering_offset(pos), orn)
+        #         index += increment
 
     # Resets the arm joints to a specific pose
     def reset_arm_joints(self, arm, poses):
@@ -327,8 +337,8 @@ class instance():
     def reset(self, o=None):
         self.state_dict = dict()
         self.state = None
-        self.reset_object_pos(o)
         self.reset_arm(self.arm, o)
+        self.reset_object_pos(o)
         for o in self.objects:
             o.update_position()
         self.t = 0
@@ -443,7 +453,6 @@ class instance():
 
         self.state_dict_euler = deepcopy(self.state_dict)
         for k, v in self.state_dict.items():
-            print(k)
             if 'orn' in k:
                 self.state_dict_euler[k] = p.getEulerFromQuaternion(v)
         state_euler = np.concatenate(list(self.state_dict_euler.values()))

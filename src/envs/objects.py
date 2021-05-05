@@ -1,10 +1,16 @@
 from src.envs.color_generation import sample_color
 from src.envs.env_params import get_env_params
 import numpy as np
-table_ranges = [(-0.55, 0.55), (0., 0.35)]
+import pybullet as p
+import os
+import pickle
 
 ENV_PARAMS = get_env_params()
 
+path = "/home/flowers/Downloads/models/ycb/"
+objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
+with open(path + 'sizes.pkl', 'rb') as f:
+    object_sizes = pickle.load(f)
 
 
 
@@ -38,11 +44,11 @@ class Thing:
         self.touched = False
         self.grasped = False
 
-        self.sample_position(objects)
         self.sample_size()
         self.sample_color()
         self.initial_rgb_encoding = self.rgb_encoding.copy()
         self.p_id = self.generate_object()
+        self.sample_position(objects)
 
 
 
@@ -120,15 +126,21 @@ class Thing:
     #         raise NotImplementedError
     #     self.size_pixels = int(RATIO_SIZE * self.size_encoding)
 
+    def compute_radius(self):
+        return np.sqrt((self.sizes[0]/2)**2 + (self.sizes[1]/2)**2)
+
     def sample_position(self, objects):
         ok = False
         while not ok:
-            candidate_position = np.array(list(np.random.uniform(low=np.array(table_ranges)[:, 0], high=np.array(table_ranges)[:, 1])) + [0.003])
+            candidate_position = np.array(list(np.random.uniform(low=np.array(self.env_params['table_ranges'])[:, 0], high=np.array(self.env_params['table_ranges'])[:, 1])) + [-0.025 + self.sizes[2] + 0.0005])
             ok = True
             for obj in objects:
-                if np.linalg.norm(obj.position - candidate_position) < self.env_params['epsilon_initial_pos']:
+                if np.linalg.norm(obj.position - candidate_position) < (self.compute_radius() + obj.compute_radius()):
                     ok = False
             if ok:
+                # set object in correct position
+                self.bullet_client.resetBasePositionAndOrientation(self.p_id, candidate_position, [0.0, 0.0, 0.7071, 0.7071])
+                # update position encoding
                 self.update_position(candidate_position)
 
     def sample_size(self):
@@ -191,24 +203,50 @@ class ShapeNet(Thing):
     def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
 
-    def generate_object(self):
-        sizes = [self.size_encoding] * 3
-
-        colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
-        visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
-        # self.position[-1] = sizes[2] / 2
-        legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
-        self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
-        return legoUID
-
     # def generate_object(self):
+    #     sizes = [self.size_encoding] * 3
+    #
+    #     colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
+    #     visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
+    #     # self.position[-1] = sizes[2] / 2
+    #     legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
+    #     self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
+    #     return legoUID
+
+    # code to get size of objs:
+    # if os.path.exists(path + 'sizes.pkl'):
+    #     with open(path + 'sizes.pkl', 'rb') as f:
+    #         max_sizes = pickle.load(f)
+    # else:
+    #     max_sizes = dict()
+    # for o in objects[70:80]:
+    #     print(o)
+    #     object_urdf = path + o
+    #     boxStartOr = p.getQuaternionFromEuler(np.deg2rad([0, 0, 0]))
+    #     boxId = p.loadURDF(object_urdf, [0, 0, 0], boxStartOr)
+    #     sizes = np.array(p.getAABB(boxId)[1]) - np.array(p.getAABB(boxId)[0])
+    #     max_sizes[o] = sizes
+    # with open(path + 'sizes.pkl', 'wb') as f:
+    #     pickle.dump(max_sizes, f)
+
+    def generate_object(self):
+        path = "/home/flowers/Downloads/models/ycb/"
+        objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
+
         # TODO insert shapenet code here
         # first load object file model
-
         # then scale it, position it and paint it
+        o = np.random.choice(objects)
+        object_urdf = path + o
+        original_sizes = object_sizes[o]
+        ratio = self.size_encoding / (np.max(original_sizes) - 0.006)
+        boxStartOr = self.bullet_client.getQuaternionFromEuler(np.deg2rad([0, 0, 0]))
+        boxId = self.bullet_client.loadURDF(object_urdf, [0, 0, 0], boxStartOr, globalScaling=ratio)
+        self.sizes = original_sizes.copy() * ratio
+        self.bullet_client.changeVisualShape(boxId, -1, rgbaColor=self.rgb_encoding + [1])
+        self.bullet_client.changeDynamics(boxId, -1, linearDamping=0, angularDamping=0, rollingFriction=0.001, spinningFriction=0.001)
+        return boxId
 
-        # return pybullet object
-        # pass
  
 
 
@@ -251,11 +289,11 @@ class Cube(Solid):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
             
     def generate_object(self):
-        sizes = [self.size_encoding] * 3
-        
+        sizes = [self.size_encoding * 3/8] * 3
+        self.sizes = sizes.copy()
+
         colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
         visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
-        self.position[-1] = sizes[2] / 2
         legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
         self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
         return legoUID
@@ -266,11 +304,11 @@ class Block(Solid):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
 
     def generate_object(self):
-        sizes = [2 * self.size_encoding] + [self.size_encoding] * 2
-        
+        sizes = [self.size_encoding / 2] + [self.size_encoding / 4] * 2
+        self.sizes = sizes.copy()
+
         colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
         visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
-        self.position[-1] = sizes[2] / 2
         legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
         self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
         return legoUID
@@ -282,11 +320,11 @@ class Cylinder(Solid):
 
     def generate_object(self):
         #TODO: update to generate a cylinder here
-        sizes = [2 * self.size_encoding] + [self.size_encoding] * 2
+        sizes = [self.size_encoding / 2] + [self.size_encoding / 4] * 2
+        self.sizes = sizes.copy()
 
         colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
         visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
-        self.position[-1] = sizes[2] / 2
         legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
         self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
         return legoUID

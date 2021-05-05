@@ -7,7 +7,7 @@ import pickle
 
 ENV_PARAMS = get_env_params()
 
-path = "/home/flowers/Downloads/models/ycb/"
+path = "./ycb_objects/"
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
 with open(path + 'sizes.pkl', 'rb') as f:
     object_sizes = pickle.load(f)
@@ -230,7 +230,6 @@ class ShapeNet(Thing):
     #     pickle.dump(max_sizes, f)
 
     def generate_object(self):
-        path = "/home/flowers/Downloads/models/ycb/"
         objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
 
         # TODO insert shapenet code here

@@ -33,7 +33,12 @@ def generate_all_descriptions(env_params):
 
 
     all_descriptions = ()
-    
+    if 'Throw' in p['admissible_actions']:
+        throw_descriptions = []
+        for i in range(env_params['max_nb_objects']):
+            throw_descriptions.append('Throw {} objects on the floor')
+        all_descriptions += tuple(throw_descriptions)
+
     if 'Open' in p['admissible_actions']:
         open_descriptions = []
         for d in drawer_door_attributes:

@@ -29,13 +29,18 @@ def complex_scene(bullet_client, env_params, offset, flags, env_range_low, env_r
     add_static(bullet_client)
 
     # make objects
-    objects_to_add = get_required_obj(description)
-    legos = sample_objects(env_params, bullet_client, objects_to_add, num_objects)[0]
-    legos_p_ids = [l.p_id for l in legos]
+    legos, legos_p_ids = sample_objects(description, bullet_client, env_params, num_objects)
 
     return door, drawer, pad, legos, legos_p_ids, [door,button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green',
                                                                                                                                                  toggleSphere_green),
                                                                          button_blue: ('button_blue', toggleSphere_blue)} # return the toggle sphere with it's joint index
+
+
+def sample_objects(description, bullet_client, env_params, num_objects):
+    objects_to_add = get_required_obj(description)
+    legos = get_objects(env_params, bullet_client, objects_to_add, num_objects)[0]
+    legos_p_ids = [l.p_id for l in legos]
+    return legos, legos_p_ids
 
 def get_required_obj(description):
     objects_to_add = []
@@ -50,7 +55,7 @@ def get_obj_identifier(env_params, object_type, color):
     return type_id + color_id
 
 
-def sample_objects(env_params, bullet_client, objects_to_add, num_objects):
+def get_objects(env_params, bullet_client, objects_to_add, num_objects):
     objects = []
     objects_ids = []
     objects_types = []

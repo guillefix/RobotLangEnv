@@ -36,9 +36,7 @@ class instance():
         flags = self.bullet_client.URDF_ENABLE_CACHED_GRAPHICS_SHAPES
         # Todo: later, put this after the centering offset so that objects are centered around it too.
         self.door, self.drawer, self.pad, self.objects, self.objects_ids, self.buttons, self.toggles = load_scene(self.bullet_client, env_params,  offset, flags,
-                                                                                                                     env_lower_bound,
-                                                                                                    env_upper_bound,
-                                                                                                num_objects, description)
+                                                                                                                  env_lower_bound, env_upper_bound, num_objects, description)
 
         self.num_objects = num_objects
         self.env_params = env_params
@@ -153,7 +151,7 @@ class instance():
         return numbers
 
     def check_on_pad(self, pos):
-        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>-0.025
+        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>-0.03
 
     # Update color of object if set on the pad
     def update_obj_colors(self):
@@ -250,10 +248,10 @@ class instance():
         for i in self.buttons:
             self.bullet_client.resetJointState(i, 0, 0)  # reset button etc
 
-        objs = []
-        for o in self.objects:
-            o.sample_position(objs)
-            objs.append(o)
+        # objs = []
+        # for o in self.objects:
+        #     o.sample_position(objs)
+        #     objs.append(o)
         for _ in range(100):
             self.bullet_client.stepSimulation()
         for o in self.objects:
@@ -334,13 +332,21 @@ class instance():
         self.reset_arm_joints(which_arm, jointPoses)
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
-    def reset(self, o=None):
+    def reset(self, o=None, description=None):
         self.state_dict = dict()
         self.state = None
+        self.previous_state = None
+        self.previous_state_dict = None
+        # resample objects
+        for obj_id in self.objects_ids:
+            self.bullet_client.removeBody(obj_id)
+        self.objects, self.objects_ids = sample_objects(description, self.bullet_client, self.env_params, self.num_objects)
         self.reset_arm(self.arm, o)
         self.reset_object_pos(o)
         for o in self.objects:
             o.update_position()
+        self.updateToggles()
+        self.update_obj_colors()
         self.t = 0
 
 
@@ -397,10 +403,7 @@ class instance():
     # Vector size is different depending on whether you are returning just pos, pos & orn, pos, orn & vel etc as specified
     # Keys to know :  observation (full state, no vel), achieved_goal (just environment state), desired_goal (currently specified goal)
     def calc_state(self):
-        if self.state == None:
-            self.previous_state = None
-            self.previous_state_dict = None
-        else:
+        if self.state is not None:
             self.previous_state_dict = deepcopy(self.state_dict)
             self.previous_state = self.state.copy()
 
@@ -426,7 +429,8 @@ class instance():
                 object_states['obj_{}_{}'.format(i, k)] = v
                 self.state_dict['obj_{}_{}'.format(i, k)] = v
 
-        self.state_dict['door_pos'] = np.array([self.bullet_client.getBasePositionAndOrientation(self.door)[0][0]])  # get the x pos TODO: need to fix this, this does not work
+        self.state_dict['door_pos'] = np.array([self.bullet_client.getJointState(self.door, 0)[0]])
+        print(self.state_dict['door_pos'])
         self.state_dict['drawer_pos'] = np.array([self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]])  # get the y pos
         self.state_dict['pad_color'] = np.array(self.pad_color)
         for j in range(len(self.buttons)):

@@ -119,14 +119,14 @@ class playEnv(gym.GoalEnv):
 
 
     # Resets the instances until reward is not satisfied
-    def reset(self, o = None, vr =None):
+    def reset(self, o = None, vr =None, description=None):
 
 
         if not self.physics_client_active:
             self.activate_physics_client(vr)
             self.physics_client_active = True
 
-        self.instance.reset(o)
+        self.instance.reset(o, description=description)
         obs = self.instance.calc_state()
 
         # r = 0

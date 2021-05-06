@@ -37,14 +37,77 @@ def complex_scene(bullet_client, env_params, offset, flags, env_range_low, env_r
 
 
 def sample_objects(description, bullet_client, env_params, num_objects):
-    objects_to_add = get_required_obj(description)
+    objects_to_add = get_required_obj(description, env_params)
     legos = get_objects(env_params, bullet_client, objects_to_add, num_objects)[0]
     legos_p_ids = [l.p_id for l in legos]
     return legos, legos_p_ids
 
-def get_required_obj(description):
+
+def get_required_obj(description, env_params):
     objects_to_add = []
+    if description == None:
+        return []
+    else:
+        words = description.lower().split(' ')
+        if words[0] == 'grasp':
+            obj = dict(type=None,
+                       color=None,
+                       category=None)
+            if len(words) == 4:
+                obj['color'] = words[2]
+            elif len(words) == 3:
+                if words[1] != 'any':
+                    obj['color'] = words[2]
+                if words[2] in env_params['types']:
+                    obj['type'] = words[2]
+                elif words[2] in env_params['categories']:
+                    obj['category'] = words[2]
+                else:
+                    raise ValueError
+            else:
+                raise ValueError
+            objects_to_add.append(obj)
+        elif words[0] in ['put', 'hide', 'move']:
+            obj = dict(type=None,
+                       color=None,
+                       category=None)
+            if words[1] == 'all':
+                nb_obj = np.random.randint(1, env_params['max_nb_objects'])
+            else:
+                nb_obj = 1
+                if words[1] in env_params['colors_attributes']:
+                    obj['color'] = words[1]
+            if words[2] in env_params['colors_attributes']:
+                obj['color'] = words[2]
+            elif words[2] in env_params['types']:
+                obj['type'] = words[2]
+            elif words[2] in env_params['categories']:
+                obj['category'] = words[2]
+            objects_to_add += [obj] * nb_obj
+        elif words[0] == 'paint':
+            if words[1] == 'all':
+                nb_obj = np.random.randint(1, env_params['max_nb_objects'])
+            else:
+                nb_obj = 1
+            target_color = words[-1]
+            for _ in range(nb_obj):
+                obj = dict(type=None,
+                           color=None,
+                           category=None)
+                if words[-2] in env_params['types']:
+                    obj['type'] = words[-2]
+                elif words[-2] in env_params['categories']:
+                    obj['category'] = words[-2]
+                if words[1] in env_params['colors_attributes']:
+                    obj['color'] = words[1]
+                elif words[2] in env_params['colors_attributes']:
+                    obj['color'] = words[2]
+                else:
+                    obj['color'] = np.random.choice(sorted(set(env_params['colors_attributes']) - set(target_color)))
+                objects_to_add.append(obj)
     return objects_to_add
+
+#
 
 def get_obj_identifier(env_params, object_type, color):
     type_id = str(env_params['types'].index(object_type))

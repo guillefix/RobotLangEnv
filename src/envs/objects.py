@@ -94,15 +94,11 @@ class Thing:
             self.orientation = np.array(new_orientation).copy()
             new_position = np.array(new_position)
 
-
-        # new_vel = self.bullet_client.getBaseVelocity(self.p_id)[0]
-
         if 'absolute_location' in self.env_params['admissible_attributes']:
             self.update_absolute_location_attributes(new_position)
 
         # update relative attributes
         self.position = new_position.copy()
-        # self.velocity = new_vel()
 
     def get_type_encoding(self, object_type):
         self.type_encoding = np.zeros([self.env_params['nb_types']])
@@ -118,26 +114,25 @@ class Thing:
                              )
         return self.features.copy()
 
-    # def sample_size(self):
-    #     if self.size == 'small':
-    #         self.size_encoding = np.random.uniform(min_max_sizes[0][0], min_max_sizes[0][1])
-    #     elif self.size == 'big':
-    #         self.size_encoding = np.random.uniform(min_max_sizes[1][0], min_max_sizes[1][1])
-    #     else:
-    #         raise NotImplementedError
-    #     self.size_pixels = int(RATIO_SIZE * self.size_encoding)
-
     def compute_radius(self):
         return np.sqrt((self.sizes[0]/2)**2 + (self.sizes[1]/2)**2)
 
     def sample_position(self, objects):
         ok = False
         while not ok:
-            candidate_position = np.array(list(np.random.uniform(low=np.array(self.env_params['table_ranges'])[:, 0], high=np.array(self.env_params['table_ranges'])[:,
-                                                                                                                           1])) + [-0.025 + self.sizes[2] + 0.0005])
+            is_left = np.random.rand() < 0.5
+            low, high = np.array(self.env_params['table_ranges'])[:, 0], np.array(self.env_params['table_ranges'])[:, 1]
+            if is_left:
+                print('left')
+                high[0] = -0.19
+            else:
+                print('right')
+                low[0] = 0.19
+            candidate_position = np.random.uniform(low=low, high=high)
+            candidate_position = np.array(list(candidate_position) + [-0.025 + self.sizes[2] + 0.0005])
             ok = True
             for obj in objects:
-                if np.linalg.norm(obj.position - candidate_position) < (self.compute_radius() + obj.compute_radius())*1.1:
+                if np.linalg.norm(obj.position - candidate_position) < (self.compute_radius() + obj.compute_radius())*1.3:
                     ok = False
             if ok:
                 # set object in correct position
@@ -149,41 +144,6 @@ class Thing:
 
     def sample_size(self):
         self.size_encoding = np.random.uniform(self.env_params['min_max_sizes'][0], self.env_params['min_max_sizes'][1])
-    # def update_state(self, hand_position, gripper_state, objects, object_grasped, action):
-    #
-    #     update_object_grasped = object_grasped
-    #
-    #     # GRASP object
-    #     # if the hand is close enough
-    #     if np.linalg.norm(self.position - hand_position) < (self.size_encoding + GRIPPER_SIZE) / 2:
-    #         if not self.touched and self.render_mode:
-    #             print('Touched :', self)
-    #         self.touched = True
-    #
-    #         # if an object is grasped
-    #         if object_grasped:
-    #             # check if it's that one, if it's still grasped
-    #             if self.grasped:
-    #                 if not gripper_state:
-    #                     update_object_grasped = False
-    #                     self.grasped = False
-    #         # if not object is grasped, check if this one is being grasped
-    #         else:
-    #             if gripper_state:
-    #                 self.grasped = True
-    #                 update_object_grasped = True
-    #                 if self.render_mode:
-    #                     print('Grasped :', self)
-    #
-    #     else:
-    #         self.touched = False
-    #
-    #     # if grasped, the object follows the hand
-    #     if self.grasped:
-    #         self.update_position(hand_position.copy())
-    #     grasped_feature = np.array([1]) if self.grasped else np.array([-1])
-    #     self.features = np.concatenate([self.type_encoding, self.position, np.array([self.size_encoding]), self.rgb_encoding, grasped_feature])
-    #     return update_object_grasped
 
     def update_color(self, new_color=None, new_rgb=None):
         if new_color is not None:
@@ -192,9 +152,6 @@ class Thing:
             self.rgb_encoding = new_rgb
             self.update_color_attributes(old_color)
         self.bullet_client.changeVisualShape(self.p_id, -1, rgbaColor=self.rgb_encoding)
-        # if self.objects:
-        #     for obj in self.objects:
-        #         obj.update_relative_attributes()
 
     def __repr__(self):
         return 'Object # {}: {} {}'.format(self.id, self.color, self.type)
@@ -207,32 +164,6 @@ class Thing:
 class ShapeNet(Thing):
     def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
-
-    # def generate_object(self):
-    #     sizes = [self.size_encoding] * 3
-    #
-    #     colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
-    #     visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding) + [1])
-    #     # self.position[-1] = sizes[2] / 2
-    #     legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
-    #     self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
-    #     return legoUID
-
-    # code to get size of objs:
-    # if os.path.exists(path + 'sizes.pkl'):
-    #     with open(path + 'sizes.pkl', 'rb') as f:
-    #         max_sizes = pickle.load(f)
-    # else:
-    #     max_sizes = dict()
-    # for o in objects[70:80]:
-    #     print(o)
-    #     object_urdf = path + o
-    #     boxStartOr = p.getQuaternionFromEuler(np.deg2rad([0, 0, 0]))
-    #     boxId = p.loadURDF(object_urdf, [0, 0, 0], boxStartOr)
-    #     sizes = np.array(p.getAABB(boxId)[1]) - np.array(p.getAABB(boxId)[0])
-    #     max_sizes[o] = sizes
-    # with open(path + 'sizes.pkl', 'wb') as f:
-    #     pickle.dump(max_sizes, f)
 
     def scan_objects_and_save_their_sizes(self):
         # MAKE SURE to scan max 10 objects at a time, otherwise you'll crash your computer

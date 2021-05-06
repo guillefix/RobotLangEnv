@@ -1,0 +1,32 @@
+newmtl m0
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka db74d12c38793bf8.jpg
+map_Kd db74d12c38793bf8.jpg
+newmtl m1
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m4
+Ka 1 0 0
+Kd 1 0 0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m2
+Ka 0.117647 0.117647 0.117647
+Kd 0.117647 0.117647 0.117647
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m3
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0

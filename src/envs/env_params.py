@@ -4,7 +4,7 @@ import os
 from src.envs.color_generation import *
 
 def get_env_params(max_nb_objects=3,
-                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),
+                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
                    admissible_attributes=('colors', 'categories', 'types'),
                    min_max_sizes=(0.15, 0.2),
                    agent_size=0.05,

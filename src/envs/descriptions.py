@@ -61,8 +61,16 @@ def generate_all_descriptions(env_params):
             for n in name_attributes:
                 grasp_descriptions.append('Grasp {} {}'.format(ca, n))
         all_descriptions += tuple(grasp_descriptions)
-    
-    
+
+    if 'Move' in p['admissible_actions']:
+        move_descriptions = []
+        for c in colors_attributes:
+            move_descriptions.append('Move any {} object'.format(c))
+        for ca in colors_attributes + ('any',):
+            for n in name_attributes:
+                move_descriptions.append('Move {} {}'.format(ca, n))
+        all_descriptions += tuple(move_descriptions)
+
     if 'Put' in p['admissible_actions']:
         put_descriptions = []
         for a in any_all_attributes:

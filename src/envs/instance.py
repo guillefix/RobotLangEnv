@@ -430,7 +430,6 @@ class instance():
                 self.state_dict['obj_{}_{}'.format(i, k)] = v
 
         self.state_dict['door_pos'] = np.array([self.bullet_client.getJointState(self.door, 0)[0]])
-        print(self.state_dict['door_pos'])
         self.state_dict['drawer_pos'] = np.array([self.bullet_client.getBasePositionAndOrientation(self.drawer['drawer'])[0][1]])  # get the y pos
         self.state_dict['pad_color'] = np.array(self.pad_color)
         for j in range(len(self.buttons)):

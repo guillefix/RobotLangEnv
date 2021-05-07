@@ -110,9 +110,13 @@ class Thing:
                              orn=self.orientation,
                              # vel=self.velocity,
                              color=self.rgb_encoding[:3],
-                             size=np.array([self.size_encoding])
+                             size=self.get_all_sizes() #TODO: make sure it works
                              )
         return self.features.copy()
+
+    def get_all_sizes(self):
+        sizes = np.array(self.bullet_client.getAABB(self.p_id)[1]) - np.array(self.bullet_client.getAABB(self.p_id)[0])
+        return sizes
 
     def compute_radius(self):
         return np.sqrt((self.sizes[0]/2)**2 + (self.sizes[1]/2)**2)
@@ -123,11 +127,9 @@ class Thing:
             is_left = np.random.rand() < 0.5
             low, high = np.array(self.env_params['table_ranges'])[:, 0], np.array(self.env_params['table_ranges'])[:, 1]
             if is_left:
-                print('left')
-                high[0] = -0.19
+                high[0] = -0.2
             else:
-                print('right')
-                low[0] = 0.19
+                low[0] = 0.2
             candidate_position = np.random.uniform(low=low, high=high)
             candidate_position = np.array(list(candidate_position) + [-0.025 + self.sizes[2] + 0.0005])
             ok = True
@@ -166,7 +168,6 @@ class ShapeNet(Thing):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
 
     def scan_objects_and_save_their_sizes(self):
-        # MAKE SURE to scan max 10 objects at a time, otherwise you'll crash your computer
         objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
 
         if os.path.exists(path + 'sizes.pkl'):
@@ -174,18 +175,19 @@ class ShapeNet(Thing):
                 max_sizes = pickle.load(f)
         else:
             max_sizes = dict()
-        for o in objects[:10]: ## CHANGE INDS HERE TO SAVE SOME OBJECTS
+        for o in objects:
             print(o)
             object_urdf = path + o
             boxStartOr = p.getQuaternionFromEuler(np.deg2rad([0, 0, 0]))
             boxId = p.loadURDF(object_urdf, [0, 0, 0], boxStartOr)
             sizes = np.array(p.getAABB(boxId)[1]) - np.array(p.getAABB(boxId)[0])
+            p.removeBody(boxId)
             max_sizes[o] = sizes
         with open(path + 'sizes.pkl', 'wb') as f:
             pickle.dump(max_sizes, f)
 
     def generate_object(self):
-        # MAKE SURE to scan max 10 objects at a time, otherwise you'll crash your computer
+        # Uncomment this once
         # self.scan_objects_and_save_their_sizes()
 
         # code for now, until we load the urdf models and save their sizes in the sizes.pkl file for all objects listed in env_params

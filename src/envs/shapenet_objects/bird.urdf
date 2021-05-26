@@ -1,0 +1,22 @@
+<robot name="bird">
+	<link name="_name">
+		<visual>
+			<origin rpy="0 0 0" xyz="-1.2104650000000001 -0.62366 -15.3726" />
+			<geometry>
+				<mesh filename="bird/80d3f59a24d8ca5bd2642d1110fc45b5.obj" scale="1 1 1" />
+			</geometry>
+			<material name="texture">
+				<color rgba="1.0 1.0 1.0 1.0" />
+			</material>
+		</visual>
+		<collision>
+			<geometry>
+				<mesh filename="bird/80d3f59a24d8ca5bd2642d1110fc45b5_vhacd.obj" scale="1 1 1" />
+			</geometry>
+		<origin rpy="0 0 0" xyz="-1.2104650000000001 -0.62366 -15.3726" /></collision>
+		<inertial>
+			<mass value="1.0" />
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+		</inertial>
+	</link>
+</robot>

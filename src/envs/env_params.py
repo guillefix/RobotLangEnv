@@ -1,16 +1,17 @@
 import os
 
 # from playground.color_generation import *
-from color_generation import *
+from src.envs.color_generation import *
 
 def get_env_params(max_nb_objects=3,
-                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),
+                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
                    admissible_attributes=('colors', 'categories', 'types'),
-                   min_max_sizes=((0.2, 0.25), (0.25, 0.3)),
+                   min_max_sizes=(0.15, 0.2),
                    agent_size=0.05,
                    epsilon_initial_pos=0.3,
                    screen_size=800,
                    next_to_epsilon=0.3,
+                   table_ranges = ((-0.4, 0.4), (0.05, 0.25)),
                    attribute_combinations=False,
                    obj_size_update=0.04,
                    render_mode=True
@@ -49,17 +50,18 @@ def get_env_params(max_nb_objects=3,
     """
 
     # list objects and categories
-    geometric_solid = ('small cube', 'big cube', 'cone', 'cylinder', 'sphere')
+    geometric_solid = ('cube', 'block', 'cylinder')
     kitchen_ware = ('bottle', 'bowl', 'plate', 'cup', 'spoon')
-    animal_model = ('bear', 'bird', 'cat', 'fish', 'elephant')
+    animal_model = ('bear', 'bird', 'dog', 'fish', 'elephant')
     food_model = ('apple', 'banana', 'cookie', 'donut', 'sandwich')
-    transportation_model = ('train', 'plane', 'car', 'bike', 'bus')
+    vehicles_model = ('train', 'plane', 'car', 'bike', 'bus')
 
     categories = dict(solid = geometric_solid,
                       kitchenware = kitchen_ware,
                       animal = animal_model,
                       food = food_model,
-                      transportation = transportation_model)
+                      vehicle = vehicles_model,
+                      )
     # List types
     types = ()
     for k_c in categories.keys():
@@ -110,12 +112,12 @@ def get_env_params(max_nb_objects=3,
 
 
     # This defines the list of occurrences that should belong to the test set. All descriptions that contain them belong to the test set.
-    words_test_set_def = ('red bear', 'green donut', 'dark blue bowl', 'white big cube', 'black car') + \
+    words_test_set_def = ('red bear', 'green donut', 'blue bowl', 'white cube', 'black car') + \
                          ('bird',) + \
                          tuple('Grasp {} train'.format(c) for c in colors + ('any',)) + \
                          tuple('Put {} {} {}'.format(c, k, p) for c in colors + any_all for k in kitchen_ware for p in positions) + \
                          tuple('Hide {} {} object'.format(a, c) for a in any_all for c in colors) + \
-                         tuple('Color {} food model {}'.format(c1, c2) for c1 in colors for c2 in tuple(list(set(list(colors)) - set(list(c1)))))
+                         tuple('Paint {} food model {}'.format(c1, c2) for c1 in colors for c2 in tuple(list(set(list(colors)) - set(list(c1)))))
 
 
     # get indices of attributes in object feature vector
@@ -133,10 +135,12 @@ def get_env_params(max_nb_objects=3,
                   admissible_actions=admissible_actions,
                   admissible_attributes=admissible_attributes,
                   dim_body_features=dim_body_features,
+                  table_ranges=table_ranges,
                   agent_position_inds=agent_position_inds,
                   grasped_inds=grasped_inds,
                   attributes=attributes,
                   categories=categories,
+                  types=types,
                   name_attributes=name_attributes,
                   colors_attributes = colors_attributes,
                   positions_attributes = positions_attributes,

@@ -1,0 +1,22 @@
+<robot name="cup">
+	<link name="_name">
+		<visual>
+			<origin rpy="0 0 0" xyz="-74.4811 -100.98505 -13.2291" />
+			<geometry>
+				<mesh filename="cup/46370d4f2653562b798e8a63b7b4edd2.obj" scale="1 1 1" />
+			</geometry>
+			<material name="texture">
+				<color rgba="1.0 1.0 1.0 1.0" />
+			</material>
+		</visual>
+		<collision>
+			<geometry>
+				<mesh filename="cup/46370d4f2653562b798e8a63b7b4edd2_vhacd.obj" scale="1 1 1" />
+			</geometry>
+		<origin rpy="0 0 0" xyz="-74.4811 -100.98505 -13.2291" /></collision>
+		<inertial>
+			<mass value="1.0" />
+			<inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+		</inertial>
+	</link>
+</robot>

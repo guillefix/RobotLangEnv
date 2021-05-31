@@ -134,7 +134,7 @@ class Thing:
             candidate_position = np.array(list(candidate_position) + [-0.025 + self.sizes[2] + 0.0005])
             ok = True
             for obj in objects:
-                if np.linalg.norm(obj.position - candidate_position) < (self.compute_radius() + obj.compute_radius())*1.3:
+                if np.linalg.norm(obj.position - candidate_position) < (self.compute_radius() + obj.compute_radius())*1.2:
                     ok = False
             if ok:
                 # set object in correct position
@@ -191,11 +191,11 @@ class ShapeNet(Thing):
         # self.scan_objects_and_save_their_sizes()
 
         # code for now, until we load the urdf models and save their sizes in the sizes.pkl file for all objects listed in env_params
-        objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
-        o = np.random.choice(objects)
+        # objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
+        # o = np.random.choice(objects)
 
         # after
-        # o = self.type
+        o = self.type + '.urdf'
 
         object_urdf = path + o
         original_sizes = object_sizes[o]  # get original size

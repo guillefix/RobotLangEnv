@@ -21,9 +21,13 @@ import math
 import os
 import shutil
 import threading
-# p.connect(p.UDP,"192.168.86.100")
 import matplotlib.pyplot as plt
 from src.envs.envList import *
+
+p.connect(p.SHARED_MEMORY)
+# p.connect(p.TCP, "localhost", 6667)
+# p.connect(p.UDP,"192.168.86.100")
+# p.connect(p.UDP, "192.168.86.10",1234)
 
 np.set_printoptions(suppress=True)
 

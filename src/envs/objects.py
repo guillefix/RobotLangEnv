@@ -7,7 +7,7 @@ import pickle
 
 ENV_PARAMS = get_env_params()
 
-path = "./src/envs/shapenet_objects/"
+path = "D:/Sorbonne University/Stage/INRIA-FLOWERS/INRIA Internship/captionRL/src/envs/shapenet_objects/"
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
 with open(path + 'sizes.pkl', 'rb') as f:
     object_sizes = pickle.load(f)

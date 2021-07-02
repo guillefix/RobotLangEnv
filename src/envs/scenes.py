@@ -22,25 +22,30 @@ def complex_scene(bullet_client, env_params, offset, flags, env_range_low, env_r
     door = add_door(bullet_client)
     drawer = add_drawer(bullet_client)
     pad = add_pad(bullet_client)
-    button_red, toggleSphere_red = add_button(bullet_client, position=(-0.48, 0.45), color=(1, 0, 0))
+    button_red, toggleSphere_red = add_button(bullet_client, position=(-.48, 0.45), color=(1, 0, 0))
     button_green, toggleSphere_green = add_button(bullet_client, position=(-0.38, 0.45), color=(0, 1, 0))
     button_blue, toggleSphere_blue = add_button(bullet_client, position=(-0.28, 0.45), color=(0, 0, 1))
 
     add_static(bullet_client)
 
     # make objects
-    legos, legos_p_ids = sample_objects(description, bullet_client, env_params, num_objects)
+    legos, legos_p_ids, objects_added = sample_objects(description, bullet_client, env_params, num_objects)
 
-    return door, drawer, pad, legos, legos_p_ids, [door,button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green',
+    return door, drawer, pad, legos, legos_p_ids, [button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green',
                                                                                                                                                  toggleSphere_green),
                                                                          button_blue: ('button_blue', toggleSphere_blue)} # return the toggle sphere with it's joint index
 
 
-def sample_objects(description, bullet_client, env_params, num_objects):
-    objects_to_add = get_required_obj(description, env_params)
-    legos = get_objects(env_params, bullet_client, objects_to_add, num_objects)[0]
-    legos_p_ids = [l.p_id for l in legos]
-    return legos, legos_p_ids
+def sample_objects(description, bullet_client, env_params, num_objects, info_reset=None):
+    if info_reset:
+        assert description is None
+        objects_to_add, sizes = info_reset
+    else:
+        objects_to_add = get_required_obj(description, env_params)
+        sizes = None
+    legos = get_objects(env_params, bullet_client, objects_to_add, num_objects, sizes)
+    legos_p_ids = [l.p_id for l in legos[0]]
+    return legos[0], legos_p_ids, legos[3]
 
 
 def get_required_obj(description, env_params):
@@ -118,10 +123,11 @@ def get_obj_identifier(env_params, object_type, color):
     return type_id + color_id
 
 
-def get_objects(env_params, bullet_client, objects_to_add, num_objects):
+def get_objects(env_params, bullet_client, objects_to_add, num_objects, sizes=None):
     objects = []
     objects_ids = []
     objects_types = []
+    objects_added = []
     if objects_to_add is not None:
         for object in objects_to_add:
             if object['type'] is not None:
@@ -135,27 +141,54 @@ def get_objects(env_params, bullet_client, objects_to_add, num_objects):
             else:
                 color = np.random.choice(env_params['colors_attributes'])
 
+            if color not in env_params['colors_attributes']:
+                stop = 1
             obj_id = get_obj_identifier(env_params, type, color)
             if obj_id not in objects_ids:
-                objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+                if sizes is not None:
+                    objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects, sizes[len(objects_added)]))
+                else:
+                    objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+                objects_added.append(dict(type=type,
+                                          color=color,
+                                          category=None))
                 objects_ids.append(obj_id)
                 objects_types.append(type)
 
+    # debug here to see the objs
+    # objs = ['apple.urdf', 'banana.urdf', 'bear.urdf', 'bike.urdf', 'bird.urdf', 'bottle.urdf', 'bowl.urdf', 'bus.urdf', 'car.urdf', 'cookie.urdf', 'cup.urdf', 'dog.urdf',
+    #       'donut.urdf', 'elephant.urdf', 'fish.urdf', 'plane.urdf', 'plate.urdf', 'sandwich.urdf', 'spoon.urdf', 'train.urdf']
+    #
+    # for type in objs:
+    #     type = type[:-5]
+    #     print(type)
+    #     color = 'red'
+    #     objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+    #     stop = 1
     while len(objects) < num_objects:
         type = np.random.choice(env_params['types'])
         color = np.random.choice(env_params['colors_attributes'])
+        if color not in env_params['colors_attributes']:
+            stop = 1
         obj_id = get_obj_identifier(env_params, type, color)
         if obj_id not in objects_ids:
-            objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+
+            if sizes is not None:
+                objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects, sizes[len(objects_added)]))
+            else:
+                objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+            objects_added.append(dict(type=type,
+                                      color=color,
+                                      category=None))
             objects_ids.append(obj_id)
             objects_types.append(type)
-    inds = list(range(len(objects)))
-    np.random.shuffle(inds)
-    objects = [objects[i] for i in inds]
-    objects_ids = [objects_ids[i] for i in inds]
-    objects_types = [objects_types[i] for i in inds]
+    # inds = list(range(len(objects)))
+    # # np.random.shuffle(inds)
+    # objects = [objects[i] for i in inds]
+    # objects_ids = [objects_ids[i] for i in inds]
+    # objects_types = [objects_types[i] for i in inds]
     print(objects_types)
-    return objects, objects_ids, objects_types
+    return objects, objects_ids, objects_types, objects_added
 
 
 def add_static(bullet_client):

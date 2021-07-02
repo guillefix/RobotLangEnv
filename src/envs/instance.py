@@ -224,56 +224,84 @@ class instance():
             o.update_position()
 
     # Resets object positions, if an obs is passed in - the objects will be reset using that
-    def reset_object_pos(self, obs=None):
+    def reset_objects(self, obs=None):
         # Todo object velocities to make this properly deterministic
-        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'],
-                                                           self.drawer['defaults']['pos'],
-                                                           self.drawer['defaults']['ori'])
+        if obs is None:
+            # reset 3 buttons' color
+            for k, v in self.toggles.items():
+                if v[0] == 'button_red':
+                    self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+                if v[0] == 'button_green':
+                    self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+                if v[0] == 'button_blue':
+                    self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+            # reset pad color
+            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=[0, 0, 0, 1])
+            self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'],
+                                                               self.drawer['defaults']['pos'],
+                                                               self.drawer['defaults']['ori'])
 
-        self.bullet_client.resetJointState(self.door, 0, 0)  # reset door
-        for i in self.buttons:
-            self.bullet_client.resetJointState(i, 0, 0)  # reset button etc
+            # reset the positions of the door, the drawer and the robot arm
+            # self.bullet_client.resetBasePositionAndOrientation(self.door, [0, 0.35, -0.2], [0, 0, 0, 1])
+            # self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], [-0.203 + 0.265, -0.00, -0.04], self.bullet_client.getQuaternionFromEuler([np.pi / 2, 0, 0]))
+            # self.bullet_client.resetBasePositionAndOrientation(self.arm, np.array([0, -0.5, 0.0]) + self.original_offset,
+            #                                                    self.bullet_client.getQuaternionFromEuler([0, 0, np.pi / 2]))
 
-        # objs = []
-        # for o in self.objects:
-        #     o.sample_position(objs)
-        #     objs.append(o)
-        for _ in range(100):
-            self.bullet_client.stepSimulation()
-        for o in self.objects:
-            o.update_position()
+            self.bullet_client.resetJointState(self.door, 0, 0.)  # reset door
+            for i in self.buttons:
+                self.bullet_client.resetJointState(i, 0, 0.)  # reset button etc
+
+            for _ in range(100):
+                self.bullet_client.stepSimulation()
+            for o in self.objects:
+                o.update_position()
+        else:
+            # reset pad color
+            pad_color = obs[115:119] * 0.5  + 0.5 * np.array([0.5]*4)
+            pad_color[3] = 1
+
+            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
+
+            drawer_pos = self.drawer['defaults']['pos']
+            drawer_pos[1] = obs[114]
+            self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'],
+                                                               drawer_pos,
+                                                               self.drawer['defaults']['ori'])
+            self.bullet_client.resetJointState(self.door, 0, obs[113])  # reset door
+            for j, i_button in enumerate(self.buttons):
+                self.bullet_client.resetJointState(i_button, 0, obs[119 + j * 2])  # reset button etc
+                self.state_buttons[i_button] = obs[120 + j * 2]
+            self.previous_state_buttons = self.state_buttons
+
+            for k, v in self.toggles.items():
+                if v[0] == 'button_red':
+                    if self.state_buttons[k]:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 0, 0, 1])
+                    else:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+                if v[0] == 'button_green':
+                    if self.state_buttons[k]:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[0, 1, 0, 1])
+                    else:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+                if v[0] == 'button_blue':
+                    # print(jointstate)
+                    # print(self.bullet_client.getJointState(k, 0)[1])
+                    if self.state_buttons[k]:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[0, 0, 1, 1])
+                    else:
+                        self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+
+            for i, o in enumerate(self.objects):
+                pos =  obs[8 + i * 35: 11 + i * 35]
+                orn =  obs[11 + i * 35: 14 + i * 35]
+                color = obs[37 + i * 35: 40 + i * 35]
+                self.bullet_client.resetBasePositionAndOrientation(self.objects_ids[i], pos, self.bullet_client.getQuaternionFromEuler(orn))
+                o.update_position()
+                o.update_color(new_rgb = np.array(color.tolist() + [1]))
+            stop = 1
 
 
-        # # if obs is None:
-        # height_offset = 0.03
-        # for o in self.objects_ids:
-        #     pos = self.add_centering_offset(np.random.uniform(self.obj_lower_bound, self.obj_upper_bound))
-        #     pos[2] = pos[2] + height_offset  # so they don't collide
-        #     self.bullet_client.resetBasePositionAndOrientation(o, pos, [0.0, 0.0, 0.7071, 0.7071])
-        #     height_offset += 0.03
-        # for i in range(0, 100):
-        #     self.bullet_client.stepSimulation()  # let everything fall into place, falling in to piecees...
-        # for o in self.objects_ids:
-        #     # print(self.env_upper_bound, self.bullet_client.getBasePositionAndOrientation(o)[0])
-        #     if (self.subtract_centering_offset(self.bullet_client.getBasePositionAndOrientation(o)[0]) > self.env_upper_bound).any():
-        #         self.reset_object_pos()
-        #
-        # else:
-        #
-        #     if self.use_orientation:
-        #         index = 11
-        #         increment = 10
-        #     else:
-        #         index = 7
-        #         increment = 6
-        #     for o in self.objects_ids:
-        #         pos = obs[index:index + 3]
-        #         if self.use_orientation:
-        #             orn = obs[index + 3:index + 7]
-        #         else:
-        #             orn = [0, 0, 0, 1]
-        #         self.bullet_client.resetBasePositionAndOrientation(o, self.add_centering_offset(pos), orn)
-        #         index += increment
 
     # Resets the arm joints to a specific pose
     def reset_arm_joints(self, arm, poses):
@@ -316,32 +344,27 @@ class instance():
         self.reset_arm_joints(which_arm, jointPoses)
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
-    def reset(self, o=None, description=None):
+    def reset(self, o=None, info_reset=None, description=None):
         # self.bullet_client.removeAllUserDebugItems()
         self.state_dict = dict()
         self.state = None
         self.previous_state = None
         self.previous_state_dict = None
-        # reset 3 buttons' color
-        for k, v in self.toggles.items():
-            if v[0] == 'button_red':
-                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
-            if v[0] == 'button_green':
-                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
-            if v[0] == 'button_blue':
-                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
-        # reset pad color
-        self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=[0, 0, 0, 1])
+
         # reset the positions of the door, the drawer and the robot arm
-        self.bullet_client.resetBasePositionAndOrientation(self.door, [0, 0.35, -0.2], [0, 0, 0, 1])
-        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], [-0.203+0.265, -0.00, -0.04], self.bullet_client.getQuaternionFromEuler([np.pi/2,0,0]))
-        self.bullet_client.resetBasePositionAndOrientation(self.arm, np.array([0, -0.5, 0.0]) + self.original_offset, self.bullet_client.getQuaternionFromEuler([0, 0, np.pi / 2]))
+        # self.bullet_client.resetBasePositionAndOrientation(self.door, [0, 0.35, -0.2], [0, 0, 0, 1])
+        # self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], [-0.203 + 0.265, -0.00, -0.04], self.bullet_client.getQuaternionFromEuler([np.pi / 2, 0, 0]))
+        # self.bullet_client.resetBasePositionAndOrientation(self.arm, np.array([0, -0.5, 0.0]) + self.original_offset,
+        #                                                    self.bullet_client.getQuaternionFromEuler([0, 0, np.pi / 2]))
+
         # resample objects
         for obj_id in self.objects_ids:
             self.bullet_client.removeBody(obj_id)
-        self.objects, self.objects_ids = sample_objects(description, self.bullet_client, self.env_params, self.num_objects)
+
+        self.objects, self.objects_ids, self.objects_added = sample_objects(description, self.bullet_client, self.env_params, self.num_objects, info_reset)
+        # print(self.objects, self.objects_ids, info_reset[0])
         self.reset_arm(self.arm, o)
-        self.reset_object_pos(o)
+        self.reset_objects(o)
         for o in self.objects:
             o.update_position()
         # self.updateToggles()
@@ -349,6 +372,9 @@ class instance():
         self.t = 0
         # self.bullet_client.addUserDebugText(text=description, textPosition=[0, 1, 0.8], textColorRGB=[1, 1, 1], textSize=1.2)
 
+    def get_stuff_to_save(self):
+        to_save = [self.objects_added, [o.size_encoding for o in self.objects]]
+        return to_save
     
     # Binary return indicating if something is between the gripper prongs, currently unused.
     def gripper_proprioception(self):
@@ -434,6 +460,8 @@ class instance():
         self.state_dict['pad_color'] = np.array(self.pad_color)
         for j in range(len(self.buttons)):
             self.state_dict['button_{}'.format(j)] = np.array([self.bullet_client.getJointState(self.buttons[j], 0)[0]])
+            self.state_dict['button_{}_state'.format(j)] = np.array([float(self.state_buttons[self.buttons[j]])])
+
 
         if self.record_images:
             img_arr = self.bullet_client.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=self.bullet_client.ER_NO_SEGMENTATION_MASK, shadow=0,
@@ -455,9 +483,9 @@ class instance():
 
 
         self.state_dict_euler = deepcopy(self.state_dict)
-        for k, v in self.state_dict.items():
+        for k, v in sorted(self.state_dict.items()):
             if 'orn' in k:
-                self.state_dict_euler[k] = p.getEulerFromQuaternion(v)
+                self.state_dict_euler[k] = np.array(p.getEulerFromQuaternion(v))
         state_euler = np.concatenate(list(self.state_dict_euler.values()))
 
         return_dict = {

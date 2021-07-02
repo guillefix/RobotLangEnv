@@ -99,6 +99,12 @@ def sample_color(color):
     color_class = Color(color)
     return color_class.sample()
 
+def infer_color(rgb):
+    for c in ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']:
+        color_class = Color(c)
+        if color_class.contains(rgb):
+            return c
+    raise ValueError
 if __name__ == '__main__':
     for c in ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']:
         plot_colors(c)

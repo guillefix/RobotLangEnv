@@ -119,14 +119,14 @@ class playEnv(gym.GoalEnv):
 
 
     # Resets the instances until reward is not satisfied
-    def reset(self, o = None, vr =None, description=None):
+    def reset(self, o = None, vr =None, description=None, info_reset=None):
 
 
         if not self.physics_client_active:
             self.activate_physics_client(vr)
             self.physics_client_active = True
 
-        self.instance.reset(o, description=description)
+        self.instance.reset(o, description=description, info_reset=info_reset)
         obs = self.instance.calc_state()
 
         # r = 0
@@ -159,7 +159,7 @@ class playEnv(gym.GoalEnv):
         self.instance.runSimulation()
         obs = self.instance.calc_state()
         done = False
-        return obs, 0, done, {'target_poses': targetPoses}
+        return obs['observation'], 0, done, {'target_poses': targetPoses}
 
     # Activates the GUI or headless physics client, and creates arm instance within it
     # Within this function is the call which selects which scene 'no obj, one obj, play etc - defined in scenes.py'

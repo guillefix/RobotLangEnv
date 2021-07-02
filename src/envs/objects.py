@@ -1,4 +1,4 @@
-from src.envs.color_generation import sample_color
+from src.envs.color_generation import sample_color, infer_color
 from src.envs.env_params import get_env_params
 import numpy as np
 import pybullet as p
@@ -9,6 +9,7 @@ ENV_PARAMS = get_env_params()
 
 # path = "D:/Sorbonne University/Stage/INRIA-FLOWERS/INRIA Internship/captionRL/src/envs/shapenet_objects/"
 path = "C:/Users/Guillermo Valle/code/captionRL/src/envs/shapenet_objects/"
+path = "./shapenet_objects/"
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
 with open(path + 'sizes.pkl', 'rb') as f:
     object_sizes = pickle.load(f)
@@ -17,7 +18,7 @@ with open(path + 'sizes.pkl', 'rb') as f:
 
 
 class Thing:
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
 
         assert color in env_params['colors_attributes']
 
@@ -34,7 +35,6 @@ class Thing:
         self.categories = []
         self.features = []
 
-        self.type_encoding = None
         self.position = None
         self.orientation = None
         self.size_encoding = None
@@ -45,14 +45,15 @@ class Thing:
         self.touched = False
         self.grasped = False
 
-        self.sample_size()
+        if size != None:
+            self.size_encoding = size
+        else:
+            self.sample_size()
         self.sample_color()
         self.initial_rgb_encoding = self.rgb_encoding.copy()
         self.p_id = self.generate_object()
         self.sample_position(objects)
-        self.update_color()
-
-
+        self.bullet_client.changeVisualShape(self.p_id, -1, rgbaColor=self.rgb_encoding)
 
     def give_ref_to_obj_list(self, objects):
         self.objects = objects
@@ -109,6 +110,7 @@ class Thing:
     def get_features(self):
         self.features = dict(pos=self.position,
                              orn=self.orientation,
+                             type=self.type_encoding,
                              # vel=self.velocity,
                              color=self.rgb_encoding[:3],
                              size=self.get_all_sizes() #TODO: make sure it works
@@ -149,11 +151,13 @@ class Thing:
         self.size_encoding = np.random.uniform(self.env_params['min_max_sizes'][0], self.env_params['min_max_sizes'][1])
 
     def update_color(self, new_color=None, new_rgb=None):
-        if new_color is not None:
-            old_color = self.color
+        old_color = self.color
+        if new_color is None:
+            self.color = infer_color(new_rgb[:3])
+        else:
             self.color = new_color
-            self.rgb_encoding = new_rgb
-            self.update_color_attributes(old_color)
+        self.rgb_encoding = new_rgb
+        self.update_color_attributes(old_color)
         self.bullet_client.changeVisualShape(self.p_id, -1, rgbaColor=self.rgb_encoding)
 
     def __repr__(self):
@@ -165,8 +169,8 @@ class Thing:
 # SHAPENET objects
 
 class ShapeNet(Thing):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
 
     def scan_objects_and_save_their_sizes(self):
         objects = sorted([o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o])
@@ -215,40 +219,40 @@ class ShapeNet(Thing):
 # CATEGORIES
             
 class Solid(Thing):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
         if 'category' in env_params['admissible_attributes']:
             self.attributes += ['solid']
 
 class Animal(ShapeNet):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
         if 'category' in env_params['admissible_attributes']:
             self.attributes += ['animal']
 
 class Food(ShapeNet):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
         if 'category' in env_params['admissible_attributes']:
             self.attributes += ['food']
 
 class Kitchenware(ShapeNet):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
         if 'category' in env_params['admissible_attributes']:
             self.attributes += ['kitchenware']
 
 class Vehicle(ShapeNet):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
         if 'category' in env_params['admissible_attributes']:
             self.attributes += ['vehicle']
 
 
 # OBJECTS
 class Cube(Solid):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
             
     def generate_object(self):
         sizes = [self.size_encoding / (np.sqrt(3) * 2) * 0.75] * 3
@@ -262,8 +266,8 @@ class Cube(Solid):
 
 
 class Block(Solid):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
 
     def generate_object(self):
         sizes = [self.size_encoding / np.sqrt(6)] + [self.size_encoding / (np.sqrt(6) * 2)] * 2
@@ -278,8 +282,8 @@ class Block(Solid):
 
 
 class Cylinder(Solid):
-    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects):
-        super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
+    def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
+        super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
 
     def generate_object(self):
         sizes = [self.size_encoding / np.sqrt(6)] + [self.size_encoding / (np.sqrt(6) * 2)] * 2
@@ -307,9 +311,9 @@ for c in shapenet_categories:
     things_classes.update(dict(zip(ENV_PARAMS['categories'][c], [cat_dict[c]] * len(ENV_PARAMS['categories'][c]))))
 
 
-def build_object(env_params, bullet_client, object_type, color, object_id, objects):
+def build_object(env_params, bullet_client, object_type, color, object_id, objects, size=None):
     assert object_type in env_params['types']
-    obj_class = things_classes[object_type](env_params, bullet_client, object_type, color, object_id, objects)
+    obj_class = things_classes[object_type](env_params, bullet_client, object_type, color, object_id, objects, size)
     assert obj_class.type == object_type, '{}, {}'.format(obj_class.type, object_type)
     return obj_class
 

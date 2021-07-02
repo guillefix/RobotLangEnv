@@ -2,6 +2,7 @@
 from src.envs.envList import *
 import numpy as np
 import pybullet as p
+import pickle as pk
 
 def add_xyz_rpy_controls(env):
     controls = []
@@ -36,7 +37,12 @@ def main():
                 break
         print(d)
         env.render(mode='human')
-        env.reset(description=d)
+        # with open('/home/flowers/Desktop/save_obj_types.pk', 'rb') as f:
+        #     stuff = pk.load(f)
+        # env.reset(description=None, o=stuff[2], info_reset=stuff[:2])
+        env.reset(description=d,)
+        #
+
         print([o for o in env.instance.objects])
         if joint_control:
             add_joint_controls(env)
@@ -62,6 +68,8 @@ def main():
 
                 state = env.instance.calc_actor_state()
                 obs, r, done, info = env.step(np.array(action))
+                with open('/home/flowers/Desktop/save_obj_types.pk', 'wb') as f:
+                    pk.dump(env.instance.get_stuff_to_save() + [obs], f)
 
             # Shows the block position just above where it is
             # x = obs['achieved_goal']

@@ -7,7 +7,8 @@ import pickle
 
 ENV_PARAMS = get_env_params()
 
-path = "D:/Sorbonne University/Stage/INRIA-FLOWERS/INRIA Internship/captionRL/src/envs/shapenet_objects/"
+# path = "D:/Sorbonne University/Stage/INRIA-FLOWERS/INRIA Internship/captionRL/src/envs/shapenet_objects/"
+path = "C:/Users/Guillermo Valle/code/captionRL/src/envs/shapenet_objects/"
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
 with open(path + 'sizes.pkl', 'rb') as f:
     object_sizes = pickle.load(f)
@@ -281,12 +282,11 @@ class Cylinder(Solid):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects)
 
     def generate_object(self):
-        #TODO: update to generate a cylinder here
         sizes = [self.size_encoding / np.sqrt(6)] + [self.size_encoding / (np.sqrt(6) * 2)] * 2
         self.sizes = sizes.copy()
 
-        colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_BOX, halfExtents=sizes)
-        visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_BOX, halfExtents=sizes, rgbaColor=list(self.rgb_encoding))
+        colcubeId = self.bullet_client.createCollisionShape(self.bullet_client.GEOM_CYLINDER, radius=self.size_encoding / (np.sqrt(6) * 2), height=2*self.size_encoding / np.sqrt(6))
+        visplaneId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_CYLINDER, radius=self.size_encoding / (np.sqrt(6) * 2), length=2*self.size_encoding / np.sqrt(6), rgbaColor=list(self.rgb_encoding))
         legoUID = self.bullet_client.createMultiBody(0.3, colcubeId, visplaneId, self.position)
         self.bullet_client.changeDynamics(legoUID, -1, lateralFriction=1.5)
         return legoUID

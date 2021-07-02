@@ -11,6 +11,7 @@ urdfRoot = pybullet_data.getDataPath()
 from src.envs.scenes import *
 from src.envs.inverseKinematics import InverseKinematicsSolver
 from copy import deepcopy
+import numpy as np
 lookat = [0, 0.0, 0.0]
 distance = 0.8
 yaw = 130
@@ -54,15 +55,7 @@ class instance():
         self.physics_client_active = 0
         self.fixed_gripper = fixed_gripper
         self.arm_type = arm_type
-        if self.arm_type == 'Panda':
-            self.default_arm_orn_RPY = [0, 0, 0]
-            self.default_arm_orn = self.bullet_client.getQuaternionFromEuler(self.default_arm_orn_RPY)
-            self.init_arm_base_orn = p.getQuaternionFromEuler([0, 0, 0])
-            self.endEffectorIndex = 11
-            self.restJointPositions = [-0.6, 0.437, 0.217, -2.09, 1.1, 1.4, 1.3, 0.0, 0.0, 0.0]
-            self.numDofs = 7
-            self.init_arm_base_pos = np.array([-0.5, 0.0, -0.05])
-        elif self.arm_type == 'UR5':
+        if self.arm_type == 'UR5':
             self.default_arm_orn_RPY = [0, 0, 0]
             self.default_arm_orn = self.bullet_client.getQuaternionFromEuler(self.default_arm_orn_RPY)
             self.init_arm_base_orn = p.getQuaternionFromEuler([0, 0, np.pi / 2])
@@ -72,13 +65,12 @@ class instance():
             self.restJointPositions = [-1.50189075, - 1.6291067, - 1.87020409, - 1.21324173, 1.57003561, 0.06970189]
             self.numDofs = 6
             self.init_arm_base_pos = np.array([0, -0.5, 0.0])
-
         else:
             raise NotImplementedError
         self.ll = [-7] * self.numDofs
         self.ul = [7] * self.numDofs
         self.jr = [6] * self.numDofs
-        self.record_images = False
+        self.record_images = True
         self.last_obs = None  # use for quaternion flipping purpposes (with equivalent quaternions)
         self.last_ag = None
 
@@ -93,19 +85,7 @@ class instance():
         print(currentdir)
         global ll
         global ul
-        if self.arm_type == 'Panda':
-
-            self.arm = self.bullet_client.loadURDF(currentdir + "/franka_panda/panda.urdf",
-                                                   self.init_arm_base_pos + offset,
-                                                   self.init_arm_base_orn, useFixedBase=True, flags=flags)
-            c = self.bullet_client.createConstraint(self.arm, 9, self.arm, 10,
-                                                    jointType=self.bullet_client.JOINT_GEAR,
-                                                    jointAxis=[1, 0, 0],
-                                                    parentFramePosition=[0, 0, 0],
-                                                    childFramePosition=[0, 0, 0])
-            self.bullet_client.changeConstraint(c, gearRatio=-1, erp=0.1, maxForce=50)
-
-        elif self.arm_type == 'UR5':
+        if self.arm_type == 'UR5':
 
             self.arm = self.bullet_client.loadURDF(currentdir + "/ur_e_description/ur5e2.urdf",
                                                    self.init_arm_base_pos + offset,
@@ -122,6 +102,9 @@ class instance():
         for j in range(self.bullet_client.getNumJoints(self.arm)):
             self.bullet_client.changeDynamics(self.arm, j, linearDamping=0, angularDamping=0)
 
+        self.reset_scene()
+
+    def reset_scene(self):
         self.state = 0
         self.control_dt = 1. / 240.
         self.finger_target = 0
@@ -133,7 +116,13 @@ class instance():
         self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
         pad_color = list(np.array([float(self.state_buttons[k]) for k in [8, 10, 12]]) * 0.5 + 0.5 * np.array([0.5] * 3)) + [1]
         self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
-
+        # for k, v in self.toggles.items():
+        #     if v[0] == 'button_red':
+        #         self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+        #     if v[0] == 'button_green':
+        #         self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+        #     if v[0] == 'button_blue':
+        #         self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
         self.state_dict = dict()
         self.state = None
 
@@ -151,7 +140,7 @@ class instance():
         return numbers
 
     def check_on_pad(self, pos):
-        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and pos[2]>-0.03
+        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and (-0.03 < pos[2] < 0.01)
 
     # Update color of object if set on the pad
     def update_obj_colors(self):
@@ -199,10 +188,13 @@ class instance():
                 else:
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
             if v[0] == 'button_blue':
+                # print(jointstate)
+                # print(self.bullet_client.getJointState(k, 0)[1])
                 if self.state_buttons[k]:
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[0, 0, 1, 1])
                 else:
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+            self.previous_button_state[k] = jointstate
         if self.switch:
             # update pad color
             self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
@@ -210,12 +202,6 @@ class instance():
             self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
 
 
-    # Dyes the objects with the same color of current panel/grill
-    # def dyeObjects(self):
-    #     for i in range(self.num_objects):
-    #         self.bullet_client.performCollisionDetection()
-    #         if self.bullet_client.getContactPoints(self.objects_ids[i], self.toggles) == None:
-    #             self.bullet_client.changeVisualShape(self.objects_ids[i], -1, rgbaColor=self.obj_colors[i])
 
     def extract_state(self, toggles):
         to_save = dict()
@@ -228,9 +214,9 @@ class instance():
     # Takes environment steps s.t the sim runs at 25 Hz
     def runSimulation(self):
 
-        self.previous_button_state = self.extract_state(self.toggles.copy())
-        # also do toggle updating here
         self.updateToggles()  # so its got both in VR and replay out
+        # self.previous_button_state = self.extract_state(self.toggles.copy())
+        # also do toggle updating here
 
         for i in range(0, 12):  # 25Hz control at 300
             self.bullet_client.stepSimulation()
@@ -307,9 +293,7 @@ class instance():
                 index = index + 1
 
     # Resets the arm - if o is specified it will reset to that pose
-    # 'Which arm' specifies whether it is the actual arm, or the ghostly arm which can be used to visualise sub-goals in hierarchial settings (only implemented for Panda)
     def reset_arm(self, which_arm=None, o=None, from_init=True):
-
         orn = self.default_arm_orn
         if o is None:
             # new_pos = self.add_centering_offset(np.random.uniform(self.goal_lower_bound, self.goal_upper_bound))
@@ -333,10 +317,25 @@ class instance():
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
     def reset(self, o=None, description=None):
+        # self.bullet_client.removeAllUserDebugItems()
         self.state_dict = dict()
         self.state = None
         self.previous_state = None
         self.previous_state_dict = None
+        # reset 3 buttons' color
+        for k, v in self.toggles.items():
+            if v[0] == 'button_red':
+                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+            if v[0] == 'button_green':
+                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+            if v[0] == 'button_blue':
+                self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
+        # reset pad color
+        self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=[0, 0, 0, 1])
+        # reset the positions of the door, the drawer and the robot arm
+        self.bullet_client.resetBasePositionAndOrientation(self.door, [0, 0.35, -0.2], [0, 0, 0, 1])
+        self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'], [-0.203+0.265, -0.00, -0.04], self.bullet_client.getQuaternionFromEuler([np.pi/2,0,0]))
+        self.bullet_client.resetBasePositionAndOrientation(self.arm, np.array([0, -0.5, 0.0]) + self.original_offset, self.bullet_client.getQuaternionFromEuler([0, 0, np.pi / 2]))
         # resample objects
         for obj_id in self.objects_ids:
             self.bullet_client.removeBody(obj_id)
@@ -345,11 +344,12 @@ class instance():
         self.reset_object_pos(o)
         for o in self.objects:
             o.update_position()
-        self.updateToggles()
+        # self.updateToggles()
         self.update_obj_colors()
         self.t = 0
+        # self.bullet_client.addUserDebugText(text=description, textPosition=[0, 1, 0.8], textColorRGB=[1, 1, 1], textSize=1.2)
 
-
+    
     # Binary return indicating if something is between the gripper prongs, currently unused.
     def gripper_proprioception(self):
         if self.arm_type == 'UR5':
@@ -407,7 +407,7 @@ class instance():
             self.previous_state_dict = deepcopy(self.state_dict)
             self.previous_state = self.state.copy()
 
-        self.updateToggles()  # good place to update the toggles
+        # self.updateToggles()  # good place to update the toggles
         self.update_obj_colors() # paint object
 
 

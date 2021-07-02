@@ -114,10 +114,13 @@ def get_env_params(max_nb_objects=3,
     # This defines the list of occurrences that should belong to the test set. All descriptions that contain them belong to the test set.
     words_test_set_def = ('red bear', 'green donut', 'blue bowl', 'white cube', 'black car') + \
                          ('bird',) + \
-                         tuple('Grasp {} train'.format(c) for c in colors + ('any',)) + \
-                         tuple('Put {} {} {}'.format(c, k, p) for c in colors + any_all for k in kitchen_ware for p in positions) + \
-                         tuple('Hide {} {} object'.format(a, c) for a in any_all for c in colors) + \
-                         tuple('Paint {} food model {}'.format(c1, c2) for c1 in colors for c2 in tuple(list(set(list(colors)) - set(list(c1)))))
+                         ('apple on the right side of the table',) + \
+                         tuple('Grasp {} food'.format(c) for c in colors + ('any',)) + \
+                         tuple('Move {} bottle'.format(c) for c in colors + ('any',)) + \
+                         tuple('Hide {} {}'.format(c, v) for c in colors + any_all for v in vehicles_model) + \
+                         tuple('Put yellow {} in the drawer'.format(t) for t in name_attributes) + \
+                         tuple('Paint black {} magenta'.format(t) for t in name_attributes)
+
 
 
     # get indices of attributes in object feature vector

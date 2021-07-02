@@ -1,4 +1,3 @@
-# from playground.env_params import get_env_params
 from src.envs.env_params import get_env_params
 
 

@@ -279,7 +279,7 @@ def add_button(bullet_client, offset=np.array([0, 0, 0]), position=(-0.48, 0.45)
     linkVisualShapeIndices = [visualShapeId]
     x = position[0]
     y = position[1]
-    linkPositions = [[x, y, 0.8]]
+    linkPositions = [[x, y-0.07, 0.8]]
     linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
     linkInertialFramePositions = [[0, 0, 0]]
     linkInertialFrameOrientations = [[0, 0, 0, 1]]

@@ -223,7 +223,7 @@ class instance():
         for o in self.objects:
             o.update_position()
 
-    # Resets object positions, if an obs is passed in - the objects will be reset using that
+    # Resets object positions, if an obs is passed in - the objects will be reset using tha
     def reset_objects(self, obs=None):
         # Todo object velocities to make this properly deterministic
         if obs is None:
@@ -236,7 +236,12 @@ class instance():
                 if v[0] == 'button_blue':
                     self.bullet_client.changeVisualShape(v[1], -1, rgbaColor=[1, 1, 1, 1])
             # reset pad color
-            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=[0, 0, 0, 1])
+            self.previous_button_state = self.extract_state(self.toggles.copy())
+            self.button_state = self.previous_button_state.copy()
+            self.state_buttons = dict(zip(self.previous_button_state.keys(), [False] * len(self.previous_button_state.keys())))
+            self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
+            pad_color = list(np.array([float(self.state_buttons[k]) for k in [8, 10, 12]]) * 0.5 + 0.5 * np.array([0.5] * 3)) + [1]
+            self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
             self.bullet_client.resetBasePositionAndOrientation(self.drawer['drawer'],
                                                                self.drawer['defaults']['pos'],
                                                                self.drawer['defaults']['ori'])
@@ -256,10 +261,11 @@ class instance():
             for o in self.objects:
                 o.update_position()
         else:
-            # reset pad color
-            pad_color = obs[115:119] * 0.5  + 0.5 * np.array([0.5]*4)
-            pad_color[3] = 1
 
+            # reset pad color
+            self.pad_color = obs[115:119]
+            pad_color = self.pad_color * 0.5  + 0.5 * np.array([0.5]*4)
+            pad_color[3] = 1
             self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
 
             drawer_pos = self.drawer['defaults']['pos']
@@ -429,6 +435,31 @@ class instance():
     # Vector size is different depending on whether you are returning just pos, pos & orn, pos, orn & vel etc as specified
     # Keys to know :  observation (full state, no vel), achieved_goal (just environment state), desired_goal (currently specified goal)
     def calc_state(self):
+        # arm_state: 0 - 8
+        # obj_0_pos: 8 - 11
+        # obj_0_orn: 11 - 14
+        # obj_0_type: 14 - 37
+        # obj_0_color: 37 - 40
+        # obj_0_size: 40 - 43
+        # obj_1_pos: 43 - 46
+        # obj_1_orn: 46 - 49
+        # obj_1_type: 49 - 72
+        # obj_1_color: 72 - 75
+        # obj_1_size: 75 - 78
+        # obj_2_pos: 78 - 81
+        # obj_2_orn: 81 - 84
+        # obj_2_type: 84 - 107
+        # obj_2_color: 107 - 110
+        # obj_2_size: 110 - 113
+        # door_pos: 113 - 114
+        # drawer_pos: 114 - 115
+        # pad_color: 115 - 119
+        # button_0: 119 - 120
+        # button_0_state: 120 - 121
+        # button_1: 121 - 122
+        # button_1_state: 122 - 123
+        # button_2: 123 - 124
+        # button_2_state: 124 - 125
         if self.state is not None:
             self.previous_state_dict = deepcopy(self.state_dict)
             self.previous_state = self.state.copy()

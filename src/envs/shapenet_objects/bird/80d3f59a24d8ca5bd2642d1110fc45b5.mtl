@@ -1,0 +1,82 @@
+newmtl m11
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m8
+Ka 0.231373 0.196078 0.180392
+Kd 0.231373 0.196078 0.180392
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m0
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka 2e501b3cfe5fb5e8.jpg
+map_Kd 2e501b3cfe5fb5e8.jpg
+newmtl m1
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka ec94bf2842d2a871.jpg
+map_Kd ec94bf2842d2a871.jpg
+newmtl m3
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka 85893334439ee92a.jpg
+map_Kd 85893334439ee92a.jpg
+newmtl m2
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka fafb180320098691.jpg
+map_Kd fafb180320098691.jpg
+newmtl m4
+Ka 0.337255 0.337255 0.34902
+Kd 0.337255 0.337255 0.34902
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m5
+Ka 0.160784 0.172549 0.2
+Kd 0.160784 0.172549 0.2
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m6
+Ka 0 0 0
+Kd 0 0 0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m7
+Ka 0.00784314 0.00392157 0.00392157
+Kd 0.00784314 0.00392157 0.00392157
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m9
+Ka 0.2 0.168627 0.156863
+Kd 0.2 0.168627 0.156863
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+newmtl m10
+Ka 0.0 0.0 0.0
+Kd 0.0 0.0 0.0
+Ks 0.0 0.0 0.0
+Ns 1.0
+d 0
+map_Ka 4d0a721a9314880c.jpg
+map_Kd 4d0a721a9314880c.jpg

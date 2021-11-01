@@ -1,7 +1,7 @@
-
-from envList import * 
+from src.envs.envList import *
 import numpy as np
 import pybullet as p
+import pickle as pk
 
 def add_xyz_rpy_controls(env):
     controls = []
@@ -20,44 +20,49 @@ def add_joint_controls(env):
         env.p.addUserDebugParameter(str(i), -2*np.pi, 2*np.pi, obj)
 
 
-joint_control = False #Toggle this flag to control joints or ABS RPY Space
+joint_control = False # Toggle this flag to control joints or ABS RPY Space
 def main():
     
     env = UR5PlayAbsRPY1Obj()
-    
-    
-    env.render(mode='human')
-    env.reset()
-    if joint_control:
-        add_joint_controls(env)
-    else:
-        controls = add_xyz_rpy_controls(env)
 
-    env.render(mode='human')
-    env.reset()
+    from src.envs.descriptions import generate_all_descriptions
+    from src.envs.env_params import get_env_params
+    env_params = get_env_params()
+    all_descriptions = generate_all_descriptions(env_params)[2]
+    for _ in range(1000):
+        while True:
+            d = np.random.choice(all_descriptions)
+            if d.lower().split()[0] not in ['turn', 'open', 'close', 'make']:
+                break
+        print(d)
+        env.render(mode='human')
+        env.reset(description=d,)
 
-    for i in range(1000000):
-
+        print([o for o in env.instance.objects])
         if joint_control:
-            poses  = []
-            for i in range(0, len(env.instance.restJointPositions)):
-                poses.append(env.p.readUserDebugParameter(i))
-            # Uses a hard reset of the arm joints so that we can quickly debug without worrying about forces
-            env.instance.reset_arm_joints(env.instance.arm, poses)
-
+            add_joint_controls(env)
         else:
-            action = []
-            for i in range(0, len(controls)):
-                action.append(env.p.readUserDebugParameter(i))
+            controls = add_xyz_rpy_controls(env)
 
-            state = env.instance.calc_actor_state()
-            obs, r, done, info = env.step(np.array(action))
-            print(r)
-             
-            # Shows the block position just above where it is
-            # x = obs['achieved_goal']
-            # x[2] += 0.1
-            # env.visualise_sub_goal(obs['achieved_goal'], sub_goal_state='achieved_goal')
+        for i in range(1000000):
+
+            if joint_control:
+                poses  = []
+                for i in range(len(env.instance.restJointPositions)):
+                    poses.append(env.p.readUserDebugParameter(i))
+                # Uses a hard reset of the arm joints so that we can quickly debug without worrying about forces
+                env.instance.reset_arm_joints(env.instance.arm, poses)
+
+            else:
+                action = []
+                for i in range(len(controls)):
+                    action.append(env.p.readUserDebugParameter(i))
+
+                state = env.instance.calc_actor_state()
+                obs, r, done, info = env.step(np.array(action))
+                with open('/home/flowers/Desktop/save_obj_types.pk', 'wb') as f:
+                    pk.dump(env.instance.get_stuff_to_save() + [obs], f)
+
 
 if __name__ == "__main__":
     main()

@@ -1,51 +1,15 @@
 import numpy as np
 import os
+from src.envs.objects import build_object
+
 TEST_OLD = True
 
-def nothing_scene(bullet_client, offset, flags):
-
-    return []
-def default_scene(bullet_client, offset, flags, env_range_low, env_range_high):
-
-    
-    # bullet_client.loadURDF("tray/traybox.urdf", [0 + offset[0], -0.1 + offset[1], -0.6 + offset[2]],
-    #                             [-0.5, -0.5, -0.5, 0.5], flags=flags)
-    plane_extent = 2
-    colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                   halfExtents=[plane_extent,plane_extent, 0.0001])
-    visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                 halfExtents=[plane_extent, plane_extent, 0.0001],
-                                                 rgbaColor=[1, 1, 1, 1])
-    plane = bullet_client.createMultiBody(0, colcubeId, visplaneId, [0, 0, -0.07])
-
-    return []
-
-def tray_box(bullet_client, offset, flags, env_range_low, env_range_high):
-    bullet_client.loadURDF("tray/traybox.urdf", [0 + offset[0], 0.0 + offset[1], -0.1 + offset[2]],
-                                [0,0,0,1], flags=flags)
+color_dict = dict(red=[1, 0, 0], green=[0, 1, 0], blue=[0, 0, 1], magenta=[1, 0, 1], yellow=[1, 1, 0], cyan=[0, 1, 1], black=[0, 0, 0], white=[1, 1, 1])
+rgb_dict = dict(zip([str([int(c) for c in v]) for v in list(color_dict.values())], list(color_dict.keys())))
 
 
-def push_scene(bullet_client, offset, flags, env_range_low, env_range_high):
+def complex_scene(bullet_client, env_params, offset, flags, env_range_low, env_range_high, num_objects, description=None):
 
-    default_scene(bullet_client, offset, flags, env_range_low, env_range_high)
-    tray_box(bullet_client, offset, flags, env_range_low, env_range_high)
-
-    legos = []
-    side = 0.025
-    colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=[side, side, side])
-    visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=[side, side, side],
-                                                 rgbaColor=[1, 1, 1, 1])
-    block = bullet_client.createMultiBody(0.1, colcubeId, visplaneId, [0, -0.06, -0.06])
-
-    legos.append(block)
-        #bullet_client.loadURDF(os.path.dirname(os.path.abspath(__file__)) + "/env_meshes/lego/lego.urdf", np.array([0.1, 0.3, -0.5]) + offset, flags=flags))
-    
-    return legos
-
-
-def complex_scene(bullet_client, offset, flags, env_range_low, env_range_high, num_objects):
-    #default_scene(bullet_client, offset, flags, env_range_low, env_range_high)
-    #tray_box(bullet_client, offset, flags, env_range_low, env_range_high)
     plane_extent = 2
     colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
                                                    halfExtents=[plane_extent, plane_extent, 0.0001])
@@ -54,40 +18,163 @@ def complex_scene(bullet_client, offset, flags, env_range_low, env_range_high, n
                                                  rgbaColor=[1, 1, 1, 1])
     plane = bullet_client.createMultiBody(0, colcubeId, visplaneId, [0, 0, -0.27])
 
-    legos = []
-    side = 0.025
-    colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=[side*2, side, side])
-    visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=[side*2, side, side],
-                                                 rgbaColor=[1, 0, 0, 1])
-    
-    visplaneId2 = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=[side*2, side, side],
-                                                 rgbaColor=[0, 1, 0, 1])
 
-    visplaneId3 = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=[side*2, side, side],
-                                                 rgbaColor=[0, 0, 1, 1])
-    viz_ids =[visplaneId, visplaneId2, visplaneId3]
-
-        
     door = add_door(bullet_client)
     drawer = add_drawer(bullet_client)
-    dial, toggleGrill = add_dial(bullet_client)#, thickness = thickness) 1.5
-    button_red, toggleSphere_red = add_button_red(bullet_client)
-    button_green, toggleSphere_green = add_button_green(bullet_client)
-    button_blue, toggleSphere_blue = add_button_blue(bullet_client)
-    button_black, toggleSphere_black = add_button_black(bullet_client)
+    pad = add_pad(bullet_client)
+    button_red, toggleSphere_red = add_button(bullet_client, position=(-.48, 0.45), color=(1, 0, 0))
+    button_green, toggleSphere_green = add_button(bullet_client, position=(-0.38, 0.45), color=(0, 1, 0))
+    button_blue, toggleSphere_blue = add_button(bullet_client, position=(-0.28, 0.45), color=(0, 0, 1))
+
     add_static(bullet_client)
 
-    for b in range(0, num_objects):
-        legoUID = bullet_client.createMultiBody(0.3, colcubeId, viz_ids[b], [-0.6, -0.06, -0.006])
-        bullet_client.changeDynamics(legoUID,
-                                 -1,
-                                #  spinningFriction=1,
-                                #  rollingFriction=1,
-                                 lateralFriction=1.5)
-        legos.append(legoUID)
-        
+    # make objects
+    legos, legos_p_ids, objects_added = sample_objects(description, bullet_client, env_params, num_objects)
 
-    return legos, drawer, [door,button_red, button_green, button_blue, button_black, dial], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green', toggleSphere_green), button_blue: ('button_blue', toggleSphere_blue), button_black: ('button_black', toggleSphere_black), dial: ('dial', toggleGrill)} # return the toggle sphere with it's joint index
+    return door, drawer, pad, legos, legos_p_ids, [button_red, button_green, button_blue], {button_red: ('button_red', toggleSphere_red), button_green: ('button_green',
+                                                                                                                                                 toggleSphere_green),
+                                                                         button_blue: ('button_blue', toggleSphere_blue)} # return the toggle sphere with it's joint index
+
+
+def sample_objects(description, bullet_client, env_params, num_objects, info_reset=None):
+    # print("scenes info_reset: ", info_reset)
+    if np.any(info_reset) != None:
+        assert description is None
+        objects_to_add, sizes = info_reset
+    else:
+        objects_to_add = get_required_obj(description, env_params)
+        sizes = None
+    legos = get_objects(env_params, bullet_client, objects_to_add, num_objects, sizes)
+    legos_p_ids = [l.p_id for l in legos[0]]
+    return legos[0], legos_p_ids, legos[3]
+
+
+def get_required_obj(description, env_params):
+    objects_to_add = []
+    if description == None:
+        return []
+    else:
+        words = description.lower().split(' ')
+        if words[0] == 'grasp':
+            obj = dict(type=None,
+                       color=None,
+                       category=None)
+            if len(words) == 4:
+                obj['color'] = words[2]
+            elif len(words) == 3:
+                if words[1] != 'any':
+                    obj['color'] = words[1]
+                if words[2] in env_params['types']:
+                    obj['type'] = words[2]
+                elif words[2] in env_params['categories']:
+                    obj['category'] = words[2]
+                else:
+                    raise ValueError
+            else:
+                raise ValueError
+            objects_to_add.append(obj)
+        elif words[0] in ['put', 'hide', 'move']:
+            obj = dict(type=None,
+                       color=None,
+                       category=None)
+            if words[1] == 'all':
+                nb_obj = np.random.randint(1, env_params['max_nb_objects'])
+            else:
+                nb_obj = 1
+                if words[1] in env_params['colors_attributes']:
+                    obj['color'] = words[1]
+            if words[2] in env_params['colors_attributes']:
+                obj['color'] = words[2]
+            elif words[2] in env_params['types']:
+                obj['type'] = words[2]
+            elif words[2] in env_params['categories']:
+                obj['category'] = words[2]
+            objects_to_add += [obj] * nb_obj
+        elif words[0] == 'paint':
+            if words[1] == 'all':
+                nb_obj = np.random.randint(1, env_params['max_nb_objects'])
+            else:
+                nb_obj = 1
+            target_color = words[-1]
+            for _ in range(nb_obj):
+                obj = dict(type=None,
+                           color=None,
+                           category=None)
+                if words[-2] in env_params['types']:
+                    obj['type'] = words[-2]
+                elif words[-2] in env_params['categories']:
+                    obj['category'] = words[-2]
+                if words[1] in env_params['colors_attributes']:
+                    obj['color'] = words[1]
+                elif words[2] in env_params['colors_attributes']:
+                    obj['color'] = words[2]
+                else:
+                    obj['color'] = np.random.choice(sorted(set(env_params['colors_attributes']) - set(target_color)))
+                objects_to_add.append(obj)
+    return objects_to_add
+
+#
+
+def get_obj_identifier(env_params, object_type, color):
+    type_id = str(env_params['types'].index(object_type))
+    if len(type_id) == 1:
+        type_id = '0' + type_id
+
+    color_id = str(env_params['colors_attributes'].index(color))
+    return type_id + color_id
+
+
+def get_objects(env_params, bullet_client, objects_to_add, num_objects, sizes=None):
+    objects = []
+    objects_ids = []
+    objects_types = []
+    objects_added = []
+    if objects_to_add is not None:
+        for object in objects_to_add:
+            if object['type'] is not None:
+                type = object['type']
+            elif object['category'] is not None:
+                type = np.random.choice(env_params['categories'][object['category']])
+            else:
+                type = np.random.choice(env_params['types'])
+            if object['color'] is not None:
+                color = object['color']
+            else:
+                color = np.random.choice(env_params['colors_attributes'])
+
+            if color not in env_params['colors_attributes']:
+                stop = 1
+            obj_id = get_obj_identifier(env_params, type, color)
+            if obj_id not in objects_ids:
+                if sizes is not None:
+                    objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects, sizes[len(objects_added)]))
+                else:
+                    objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+                objects_added.append(dict(type=type,
+                                          color=color,
+                                          category=None))
+                objects_ids.append(obj_id)
+                objects_types.append(type)
+
+    while len(objects) < num_objects:
+        type = np.random.choice(env_params['types'])
+        color = np.random.choice(env_params['colors_attributes'])
+        if color not in env_params['colors_attributes']:
+            stop = 1
+        obj_id = get_obj_identifier(env_params, type, color)
+        if obj_id not in objects_ids:
+
+            if sizes is not None:
+                objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects, sizes[len(objects_added)]))
+            else:
+                objects.append(build_object(env_params, bullet_client, type, color, len(objects), objects))
+            objects_added.append(dict(type=type,
+                                      color=color,
+                                      category=None))
+            objects_ids.append(obj_id)
+            objects_types.append(type)
+    print(objects_types)
+    return objects, objects_ids, objects_types, objects_added
 
 
 def add_static(bullet_client):
@@ -109,14 +196,14 @@ def add_static(bullet_client):
     width = 0.6
     create(halfExtents=[width, 0.28, 0.005], location = [0, 0.25, -0.03])
     # Cabinet back
-    create(halfExtents=[width, 0.01, 0.235], location = [0., 0.52, -0.00])
+    create(halfExtents=[width, 0.01, 0.235], location = [0., 0.585, -0.00])
     # Cabinet top
     width = 0.62
-    create(halfExtents=[width, 0.065, 0.005], location =[0., 0.45, 0.24])
+    create(halfExtents=[width, 0.13, 0.005], location =[0., 0.45, 0.24])
     # Cabinet sides
     width = 0.03
-    create(halfExtents=[width, 0.065, 0.235], location =[-0.59, 0.45, -0.00])
-    create(halfExtents=[width, 0.065, 0.235], location =[0.59, 0.45, -0.00])
+    create(halfExtents=[width, 0.13, 0.235], location =[-0.59, 0.45, -0.00])
+    create(halfExtents=[width, 0.13, 0.235], location =[0.59, 0.45, -0.00])
 
 
 def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=False):
@@ -124,8 +211,6 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
     colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
                                                   halfExtents=[sphereRadius, sphereRadius, sphereRadius])
 
-    #     wallid = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-    #                                       halfExtents=[sphereRadius*4, sphereRadius/4, sphereRadius*4])
     wallid = bullet_client.createCollisionShape(bullet_client.GEOM_MESH, fileName=os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door2.obj', meshScale=[0.0015] * 3,
                                         flags=bullet_client.GEOM_FORCE_CONCAVE_TRIMESH)
 
@@ -138,7 +223,8 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
         visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj', meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH, rgbaColor=[0,0,1,0.5])
         linkVisualShapeIndices = [visId]
     else:
-        visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj', meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH)
+        visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName = os.path.dirname(os.path.abspath(__file__)) + '/env_meshes/door_textured.obj',
+                                                meshScale = [0.0015] * 3,  flags = bullet_client.GEOM_FORCE_CONCAVE_TRIMESH, rgbaColor=[0,1,1,0.5])
         if TEST_OLD:
                linkVisualShapeIndices = [-1]
         else:
@@ -153,7 +239,7 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
     jointTypes = [bullet_client.JOINT_PRISMATIC]
     axis = [[0, 0, 1]]
 
-    basePosition = np.array([0, 0.4, -0.2]) + offset
+    basePosition = np.array([0, 0.35, -0.2]) + offset
     baseOrientation = [0, 0, 0, 1]
 
     sphereUid = bullet_client.createMultiBody(mass,
@@ -186,16 +272,19 @@ def add_door(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fals
                                                            collisionFilterMask)
     return sphereUid
 
-def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
+
+def add_button(bullet_client, offset=np.array([0, 0, 0]), position=(-0.48, 0.45), color=(0,0,0), ghostly = False):
     sphereRadius = 0.02
     colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
                                                   halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
 
     mass = 0
     if ghostly:
-        rgbaColor = [1,0,0,0.5]
+        rgbaColor = list(color) + [0.5]
+        # rgbaColor = [1,0,0,0.5]
     else:
-        rgbaColor = [1,0,0,1]
+        rgbaColor = list(color) + [1]
+        # rgbaColor = [1,0,0,1]
 
     visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
                                                         halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
@@ -205,9 +294,9 @@ def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
     link_Masses = [0.1]
     linkCollisionShapeIndices = [colBoxId]
     linkVisualShapeIndices = [visualShapeId]
-    x = -0.48
-    y = 0.45
-    linkPositions = [[x,y, 0.8]]
+    x = position[0]
+    y = position[1]
+    linkPositions = [[x, y-0.07, 0.8]]
     linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
     linkInertialFramePositions = [[0, 0, 0]]
     linkInertialFrameOrientations = [[0, 0, 0, 1]]
@@ -240,242 +329,7 @@ def add_button_red(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
                                  spinningFriction=0.001,
                                  rollingFriction=0.001,
                                  linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-def add_button_green(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,1,0,0.5]
-    else:
-        rgbaColor = [0,1,0,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.38
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-def add_button_blue(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,0,1,0.5]
-    else:
-        rgbaColor = [0,0,1,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.28
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
-
-
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleSphere = None
-    else:
-        # create a little globe to turn on and off
-        sphereRadius = 0.03
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_SPHERE, radius=sphereRadius)
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_SPHERE,
-                                                        radius=sphereRadius,
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleSphere = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [x, y, 0.24],
-                                                     baseOrientation)
-
-    return sphereUid, toggleSphere
-
-
-
-def add_button_black(bullet_client, offset=np.array([0, 0, 0]), ghostly = False):
-    sphereRadius = 0.02
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0,0,0,0.5]
-    else:
-        rgbaColor = [0,0,0,1]
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[sphereRadius, sphereRadius, sphereRadius / 4],
-                                                        rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [visualShapeId]
-    x = -0.14
-    y = 0.45
-    linkPositions = [[x,y, 0.80]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, -0.7]) + offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    #bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
+    bullet_client.setJointMotorControl2(sphereUid, 0, bullet_client.POSITION_CONTROL, targetPosition=0.03, force=1)
 
 
     if ghostly:
@@ -503,73 +357,45 @@ def add_drawer(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fa
     texUid = bullet_client.loadTexture(os.path.dirname(
         os.path.abspath(__file__)) + '/env_meshes/wood.png')
 
-    # if not ghostly:
-    #     # add in the blockers to prevent it being pulled all the way out
-    #     half_extents = [0.1, 0.28, 0.005]
-    #     colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-    #     visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents,
-    #                                                  rgbaColor=[0.75, 0.4, 0.2, 1])
-    #     bottom = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.13, 0.25, -0.13])
-    #     bullet_client.changeVisualShape(bottom, -1, textureUniqueId=texUid)
-
-    #     half_extents = [0.1, 0.05, 0.015]
-    #     colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-    #     visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents,
-    #                                                  rgbaColor=[0.75, 0.4, 0.2, 1])
-    #     back = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [0, 0.25, -0.06])
-    #     bullet_client.changeVisualShape(back, -1, textureUniqueId=texUid)
-    #     half_extents = [0.03, 0.01, 0.045]
-    #     colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-    #     visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents,
-    #                                                  rgbaColor=[0.75, 0.4, 0.2, 1])
-    #     side1 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.25, -0.02, -0.08])
-    #     bullet_client.changeVisualShape(side1, -1, textureUniqueId=texUid)
-
-    #     colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-    #     visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents,
-    #                                                  rgbaColor=[0.75, 0.4, 0.2, 1])
-    #     side2 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.0, -0.02, -0.08])
-    #     bullet_client.changeVisualShape(side2, -1, textureUniqueId=texUid)
-
     if not ghostly:
         # add in the blockers to prevent it being pulled all the way out
         half_extents = [0.24, 0.28, 0.005]
         colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
         visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-        bottom = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.265, 0.25, -0.13])
+        bottom = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.265+0.265, 0.25, -0.17])
         bullet_client.changeVisualShape(bottom, -1, textureUniqueId=texUid)
 
         half_extents = [0.22, 0.05, 0.015]
         colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
         visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-        back = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.22, 0.25, -0.06])
+        back = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.22+0.265, 0.25, -0.06])
         bullet_client.changeVisualShape(back, -1, textureUniqueId=texUid)
-        half_extents = [0.03, 0.01, 0.045]
+        half_extents = [0.03, 0.01, 0.07]
         colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
         visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-        side1 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.527, -0.02, -0.08])
+        side1 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.527+0.265, -0.02, -0.101])
         bullet_client.changeVisualShape(side1, -1, textureUniqueId=texUid)
 
         colcubeId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
         visplaneId = bullet_client.createVisualShape(bullet_client.GEOM_BOX, halfExtents=half_extents)
-        side2 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.0, -0.02, -0.08])
+        side2 = bullet_client.createMultiBody(0.0, colcubeId, visplaneId, [-0.0+0.265, -0.02, -0.101])
         bullet_client.changeVisualShape(side2, -1, textureUniqueId=texUid)
 
 
     wallid = bullet_client.createCollisionShape(bullet_client.GEOM_MESH, fileName=os.path.dirname(
-        os.path.abspath(__file__)) + '/env_meshes/drawer6.obj', meshScale=[1.25] * 3,
+        os.path.abspath(__file__)) + '/env_meshes/drawer8.obj', meshScale=[1.25] * 3,
                                                 flags=bullet_client.GEOM_FORCE_CONCAVE_TRIMESH)
 
     if ghostly:
         mass = 0
         visId = bullet_client.createVisualShape(bullet_client.GEOM_MESH, fileName=os.path.dirname(
-            os.path.abspath(__file__)) + '/env_meshes/drawer6.obj', meshScale=[1.25] * 3,
+            os.path.abspath(__file__)) + '/env_meshes/drawer8.obj', meshScale=[1.25] * 3,
                                                 flags=bullet_client.GEOM_FORCE_CONCAVE_TRIMESH,
                                                 rgbaColor=[1, 1, 0, 0.5])
     else:
         mass = 0.1
         visId = -1
-    drawer_defaults = {"pos": [-0.203, -0.00, -0.04], "ori": bullet_client.getQuaternionFromEuler([np.pi/2,0,0])}
+    drawer_defaults = {"pos": [-0.203+0.265, -0.00, -0.04], "ori": bullet_client.getQuaternionFromEuler([np.pi/2,0,0])}
     drawer = bullet_client.createMultiBody(mass, wallid, visId, drawer_defaults['pos'], baseOrientation=drawer_defaults['ori'])
 
     if ghostly:
@@ -579,132 +405,19 @@ def add_drawer(bullet_client, offset=np.array([0, 0, 0]), flags=None, ghostly=Fa
 
     return {'drawer': drawer, 'defaults':drawer_defaults}
 
-def dial_to_0_1_range(data):
-    return (data % 2*np.pi ) / (2.2*np.pi)
 
-def add_dial(bullet_client, offset=np.array([0, 0, 0]), flags=None, thickness = 1.5, ghostly=False):
-    fixedjointRadius = 0.00001
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                  halfExtents=[fixedjointRadius, fixedjointRadius, fixedjointRadius])
-    sphereRadius = 0.0075
-    wallid = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                halfExtents=[sphereRadius * 4, sphereRadius *thickness, sphereRadius * 4])
-
-    mass = 0
-    if ghostly:
-        rgbaColor = [0, 0, 0, 0.5]
-    else:
-        rgbaColor = [0, 0, 0, 0]    # [0, 0, 0, 1] to visualize
-
-    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                    halfExtents=[sphereRadius * 4, sphereRadius *thickness, sphereRadius * 4],
-                                                    rgbaColor=rgbaColor)
-
-
-    link_Masses = [0.1]
-    linkCollisionShapeIndices = [wallid]
-    linkVisualShapeIndices = [-1]
-    linkPositions = [[0, -0.055, 0.0]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([np.pi / 2, 0, 0])]
-    linkInertialFramePositions = [[0, 0, 0.0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    jointTypes = [bullet_client.JOINT_REVOLUTE]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0.3, 0.1, -0.07]) + offset
+def add_pad(bullet_client, offset=np.array([0, 0, 0]), flags=None, thickness = 1.5, ghostly=False):
     baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                              colBoxId,
-                                              visualShapeId,
-                                              basePosition,
-                                              baseOrientation,
-                                              linkMasses=link_Masses,
-                                              linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                              linkVisualShapeIndices=linkVisualShapeIndices,
-                                              linkPositions=linkPositions,
-                                              linkOrientations=linkOrientations,
-                                              linkInertialFramePositions=linkInertialFramePositions,
-                                              linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                              linkParentIndices=indices,
-                                              linkJointTypes=jointTypes,
-                                              linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                                 -1,
-                                 spinningFriction=0.001,
-                                 rollingFriction=0.001,
-                                 linearDamping=0.0)
-    bullet_client.changeDynamics(sphereUid, 0, jointLowerLimit=1, jointUpperLimit=1)
-
-    # create a little globe to turn on and off
     width = 0.17
 
-    if ghostly:
-        collisionFilterGroup = 0
-        collisionFilterMask = 0
-        bullet_client.setCollisionFilterGroupMask(sphereUid, -1, collisionFilterGroup, collisionFilterMask)
-        for i in range(0, bullet_client.getNumJoints(sphereUid)):
-            bullet_client.setCollisionFilterGroupMask(sphereUid, i, collisionFilterGroup,
-                                                           collisionFilterMask)
-        toggleGrill = None
-    else:
-        # create a grill to turn on/off
-
-        colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                                         halfExtents=[width, width, 0.01])
-        visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
-                                                        halfExtents=[width, width, 0.01],
-                                                        rgbaColor=[1, 1, 1, 1])
-        toggleGrill = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [0, 0.15, -0.03],
-                                                    baseOrientation)
+    colSphereId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
+                                                     halfExtents=[width, width, 0.006])
+    visualShapeId = bullet_client.createVisualShape(bullet_client.GEOM_BOX,
+                                                    halfExtents=[width, width, 0.006],
+                                                    rgbaColor=[0, 0, 0, 1])
+    pad = bullet_client.createMultiBody(0.0, colSphereId, visualShapeId, [0, 0.15, -0.03],
+                                                baseOrientation)
 
 
-    return sphereUid, toggleGrill
+    return pad
 
-def add_hinge(bullet_client, offset, flags):
-    sphereRadius = 0.05
-    colBoxId = bullet_client.createCollisionShape(bullet_client.GEOM_BOX,
-                                      halfExtents=[sphereRadius, sphereRadius, sphereRadius])
-
-    mass = 0
-    visualShapeId = -1
-
-    link_Masses = [1]
-    linkCollisionShapeIndices = [colBoxId]
-    linkVisualShapeIndices = [-1]
-    linkPositions = [[0.0,0.0, -0.5]]
-    linkOrientations = [bullet_client.getQuaternionFromEuler([0,np.pi/2,0])]
-    linkInertialFramePositions = [[0, 0, 0]]
-    linkInertialFrameOrientations = [[0, 0, 0, 1]]
-    indices = [0]
-    # jointTypes = [bullet_client.JOINT_REVOLUTE]
-    jointTypes = [bullet_client.JOINT_PRISMATIC]
-    axis = [[0, 0, 1]]
-
-    basePosition = np.array([0, 0, 0])+offset
-    baseOrientation = [0, 0, 0, 1]
-
-    sphereUid = bullet_client.createMultiBody(mass,
-                                  colBoxId,
-                                  visualShapeId,
-                                  basePosition,
-                                  baseOrientation,
-                                  linkMasses=link_Masses,
-                                  linkCollisionShapeIndices=linkCollisionShapeIndices,
-                                  linkVisualShapeIndices=linkVisualShapeIndices,
-                                  linkPositions=linkPositions,
-                                  linkOrientations=linkOrientations,
-                                  linkInertialFramePositions=linkInertialFramePositions,
-                                  linkInertialFrameOrientations=linkInertialFrameOrientations,
-                                  linkParentIndices=indices,
-                                  linkJointTypes=jointTypes,
-                                  linkJointAxis=axis)
-
-    bullet_client.changeDynamics(sphereUid,
-                     -1,
-                     spinningFriction=0.001,
-                     rollingFriction=0.001,
-                     linearDamping=0.0)
-    return sphereUid

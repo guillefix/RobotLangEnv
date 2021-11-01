@@ -1,16 +1,16 @@
 import os
 
-# from playground.color_generation import *
-from color_generation import *
+from src.envs.color_generation import *
 
 def get_env_params(max_nb_objects=3,
-                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint'),
+                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
                    admissible_attributes=('colors', 'categories', 'types'),
-                   min_max_sizes=((0.2, 0.25), (0.25, 0.3)),
+                   min_max_sizes=(0.1, 0.15),
                    agent_size=0.05,
                    epsilon_initial_pos=0.3,
                    screen_size=800,
                    next_to_epsilon=0.3,
+                   table_ranges = ((-0.42, 0.42), (0.05, 0.25)),
                    attribute_combinations=False,
                    obj_size_update=0.04,
                    render_mode=True
@@ -49,17 +49,18 @@ def get_env_params(max_nb_objects=3,
     """
 
     # list objects and categories
-    geometric_solid = ('small cube', 'big cube', 'cone', 'cylinder', 'sphere')
+    geometric_solid = ('cube', 'block', 'cylinder')
     kitchen_ware = ('bottle', 'bowl', 'plate', 'cup', 'spoon')
-    animal_model = ('bear', 'bird', 'cat', 'fish', 'elephant')
+    animal_model = ('bear', 'bird', 'dog', 'fish', 'elephant')
     food_model = ('apple', 'banana', 'cookie', 'donut', 'sandwich')
-    transportation_model = ('train', 'plane', 'car', 'bike', 'bus')
+    vehicles_model = ('train', 'plane', 'car', 'bike', 'bus')
 
     categories = dict(solid = geometric_solid,
                       kitchenware = kitchen_ware,
                       animal = animal_model,
                       food = food_model,
-                      transportation = transportation_model)
+                      vehicle = vehicles_model,
+                      )
     # List types
     types = ()
     for k_c in categories.keys():
@@ -68,10 +69,7 @@ def get_env_params(max_nb_objects=3,
     nb_types = len(types)
 
     # List attributes + others
-    # colors = ('red', 'dark red', 'green', 'dark green', 'blue', 'dark blue', 'yellow', 'dark yellow', 'magenta', 'dark magenta', 'cyan', 'dark cyan', 'white', 'gray', 'black')
     colors = list(('red', 'green', 'blue', 'yellow', 'magenta', 'cyan', 'white', 'black'))
-    # for c in colors.copy():
-    #     colors.append('dark ' + c)
     colors = tuple(colors)
     positions = ('on the left side of the table', 'on the right side of the table', 'on the shelf', 'behind the door', 'in the drawer')
     drawer_door = ('drawer', 'door')
@@ -110,12 +108,15 @@ def get_env_params(max_nb_objects=3,
 
 
     # This defines the list of occurrences that should belong to the test set. All descriptions that contain them belong to the test set.
-    words_test_set_def = ('red bear', 'green donut', 'dark blue bowl', 'white big cube', 'black car') + \
+    words_test_set_def = ('red bear', 'green donut', 'blue bowl', 'white cube', 'black car') + \
                          ('bird',) + \
-                         tuple('Grasp {} train'.format(c) for c in colors + ('any',)) + \
-                         tuple('Put {} {} {}'.format(c, k, p) for c in colors + any_all for k in kitchen_ware for p in positions) + \
-                         tuple('Hide {} {} object'.format(a, c) for a in any_all for c in colors) + \
-                         tuple('Color {} food model {}'.format(c1, c2) for c1 in colors for c2 in tuple(list(set(list(colors)) - set(list(c1)))))
+                         ('apple on the right side of the table',) + \
+                         tuple('Grasp {} food'.format(c) for c in colors + ('any',)) + \
+                         tuple('Move {} bottle'.format(c) for c in colors + ('any',)) + \
+                         tuple('Hide {} {}'.format(c, v) for c in colors + any_all for v in vehicles_model) + \
+                         tuple('Put yellow {} in the drawer'.format(t) for t in name_attributes) + \
+                         tuple('Paint black {} magenta'.format(t) for t in name_attributes)
+
 
 
     # get indices of attributes in object feature vector
@@ -133,10 +134,12 @@ def get_env_params(max_nb_objects=3,
                   admissible_actions=admissible_actions,
                   admissible_attributes=admissible_attributes,
                   dim_body_features=dim_body_features,
+                  table_ranges=table_ranges,
                   agent_position_inds=agent_position_inds,
                   grasped_inds=grasped_inds,
                   attributes=attributes,
                   categories=categories,
+                  types=types,
                   name_attributes=name_attributes,
                   colors_attributes = colors_attributes,
                   positions_attributes = positions_attributes,
@@ -164,310 +167,149 @@ def get_env_params(max_nb_objects=3,
     # Define extraction functions
     # # # # # # # # # # # # # # #
 
-    # global extraction functions
-    def count_objects(state):
-        return (state.size - params['dim_body_features']) // params['dim_obj_features']
-
-    def get_obj_features(state, i_obj):
-        inds = np.arange(dim_body_features + dim_obj_features * i_obj, dim_body_features + dim_obj_features * (i_obj + 1))
-        return state[inds]
-
-    # Attribute extraction functions
-    def get_obj_type(all_obj_features, i_obj):
-        obj_features = all_obj_features[i_obj]
-        type_encoding = obj_features[type_inds]
-        ind = type_encoding.tolist().index(1)
-        obj_type = types[ind]
-        return [obj_type]
-
-    def get_obj_cat(all_obj_features, i_obj):
-        obj_type = get_obj_type(all_obj_features, i_obj)[0]
-        cats = []
-        for k in categories.keys():
-            if obj_type in categories[k]:
-                cats.append(k)
-        return cats
-
-    def get_obj_color(all_obj_features, i_obj):
-        obj_features = all_obj_features[i_obj]
-        rgb = obj_features[color_inds]
-        for c in colors:
-            for s in shades:
-                color_class = Color(c, s)
-                if color_class.contains(rgb):
-                    return [c]
-        raise ValueError
-
-    def get_obj_shade(all_obj_features, i_obj):
-        obj_features = all_obj_features[i_obj]
-        rgb = obj_features[color_inds]
-        for c in colors:
-            for s in shades:
-                color_class = Color(c, s)
-                if color_class.contains(rgb):
-                    return [s]
-        raise ValueError
-
-    def get_obj_size(all_obj_features, i_obj):
-        obj_features = all_obj_features[i_obj]
-        size = obj_features[size_inds]
-        if size < min_max_sizes[0][1]:
-            return ['small']
-        else:
-            return ['big']
-
-    def get_darkest_obj_id(all_obj_features):
-        # list of obj_features
-        shades = np.array(tuple(feature[color_inds].mean() for feature in all_obj_features))
-        return np.argwhere(shades == np.min(shades)).flatten()
-
-    def get_lightest_obj_id(all_obj_features):
-        # list of obj_features
-        shades = np.array(tuple(feature[color_inds].mean() for feature in all_obj_features))
-        return np.argwhere(shades == np.max(shades)).flatten()
-
-    def get_obj_relative_shades(all_obj_features, i_obj):
-        out = []
-        if i_obj in get_darkest_obj_id(all_obj_features):
-            out.append('darkest')
-        if i_obj in get_lightest_obj_id(all_obj_features):
-            out.append('lightest')
-        return out
-
-    def get_biggest_obj_id(all_obj_features):
-        # list of obj_features
-        sizes = np.array(tuple(feature[size_inds] for feature in all_obj_features))
-        return np.argwhere(sizes == np.max(sizes)).flatten()
-
-    def get_smallest_obj_id(all_obj_features):
-        # list of obj_features
-        sizes = np.array(tuple(feature[size_inds] for feature in all_obj_features))
-        return np.argwhere(sizes == np.min(sizes)).flatten()
-
-    def get_obj_relative_sizes(all_obj_features, i_obj):
-        out = []
-        if i_obj in get_biggest_obj_id(all_obj_features):
-            out.append('biggest')
-        if i_obj in get_smallest_obj_id(all_obj_features):
-            out.append('smallest')
-        return out
-
-    def get_obj_position(all_obj_features, i_obj):
-        obj_features = all_obj_features[i_obj]
-        position = obj_features[position_inds]
-        attr = []
-        if position[0] < 0:
-            attr.append('left')
-        else:
-            attr.append('right')
-        if position[1] < 0:
-            attr.append('bottom')
-        else:
-            attr.append('top')
-        return attr
-
-    def get_leftest_obj_id(all_obj_features):
-        # list of obj_features
-        x_position = np.array(tuple(feature[position_inds[0]] for feature in all_obj_features))
-        return np.argwhere(x_position == np.min(x_position)).flatten()
+    # Get the number of objects thrown on the floor
+    def get_nb_floor_objects(initial_state, current_state):
+        nb = 0
+        for i in range(3):
+            if (initial_state[10 + i * 35] > -0.17) and (current_state[10 + i * 35] < -0.2):
+                nb = nb + 1
+        return nb
     
-    def get_rightest_obj_id(all_obj_features):
-        # list of obj_features
-        x_position = np.array(tuple(feature[position_inds[0]] for feature in all_obj_features))
-        return np.argwhere(x_position == np.max(x_position)).flatten()
+    # Extract interactions with objects
+    def get_open(initial_state, current_state):
+        open = []
+        if (-0.05 < initial_state[113] < 0.05) and (current_state[113] < -0.22):
+            open.append('door')
+        if (initial_state[114] - current_state[114]) > 0.00001:
+            open.append('drawer')
+        return open
 
-    def get_highest_obj_id(all_obj_features):
-        # list of obj_features
-        y_position = np.array(tuple(feature[position_inds[1]] for feature in all_obj_features))
-        return np.argwhere(y_position == np.max(y_position)).flatten()
-    
-    def get_lowest_obj_id(all_obj_features):
-        # list of obj_features
-        y_position = np.array(tuple(feature[position_inds[1]] for feature in all_obj_features))
-        return np.argwhere(y_position == np.min(y_position)).flatten()
-    
-    def get_relative_position(all_obj_features, i_obj):
-        out = []
-        if i_obj in get_leftest_obj_id(all_obj_features):
-            out.append('leftest')
-        if i_obj in get_rightest_obj_id(all_obj_features):
-            out.append('rightest')
-        if i_obj in get_highest_obj_id(all_obj_features):
-            out.append('highest')
-        if i_obj in get_lowest_obj_id(all_obj_features):
-            out.append('lowest')
-        return out
+    def get_close(initial_state, current_state):
+        close = []
+        if (-0.05 < initial_state[113] < 0.05) and (current_state[113] > 0.22):
+            close.append('door')
+        if current_state[114] > 0.06:
+            close.append('drawer')
+        return close
 
-    get_attributes_functions = dict(relative_shades=get_obj_relative_shades,
-                                    relative_sizes=get_obj_relative_sizes,
-                                    relative_positions=get_relative_position,
-                                    positions=get_obj_position,
-                                    colors=get_obj_color,
-                                    shades=get_obj_shade,
-                                    sizes=get_obj_size,
-                                    types=get_obj_type,
-                                    categories=get_obj_cat)
-    # assert sorted(list(get_attributes_functions.keys())) == sorted(list(attributes))
+    def get_grasped_ids(current_state):
+        obj_grasped = []
+        if current_state[7] > 0.03:
+            for i in range(3):
+                if current_state[10 + i * 35] > 0.08:
+                    obj_grasped.append(i)
+        return obj_grasped
 
-    # List all attributes of all objects from state
-    def get_attributes_from_state(state):
-        assert state.ndim == 1
-        nb_objs = count_objects(state)
-        all_obj_features = [get_obj_features(state, i_obj) for i_obj in range(nb_objs)]
+    def get_moved_ids(initial_state, current_state):
+        obj_moved = []
+        for i in range(3):
+            if (abs(current_state[8 + i * 35] - initial_state[8 + i * 35]) > 0.0001) or (abs(current_state[9 + i * 35] - initial_state[9 + i * 35]) > 0.0001):
+                obj_moved.append(i)
+        return obj_moved
 
-        # get attributes for all objects
-        all_objects_attributes = []
-        for i_obj in range(nb_objs):
-            obj_attributes = []
-            for k in admissible_attributes:
-                obj_attributes += get_attributes_functions[k](all_obj_features, i_obj)
-            all_objects_attributes.append(obj_attributes)
+    def get_put_ids_pos(initial_state, current_state):
+        obj_put = []
+        obj_pos = {}
+        for i in range(3):
+            if (abs(current_state[8 + i * 35] - initial_state[8 + i * 35]) > 0.0001) or (abs(current_state[9 + i * 35] - initial_state[9 + i * 35]) > 0.0001):
+                obj_put.append(i)
+                if (current_state[8 + i * 35] < 0) and (current_state[9 + i * 35] <= 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.08):
+                    obj_pos[i] = 'on the left side of the table'
+                elif (current_state[8 + i * 35] > 0) and (current_state[9 + i * 35] <= 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.08):
+                    obj_pos[i] = 'on the right side of the table'
+                elif (current_state[9 + i * 35] > 0.32) and (current_state[10 + i * 35] > 0.24):
+                    obj_pos[i] = 'on the shelf'
+                elif (current_state[9 + i * 35] > 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.24):
+                    obj_pos[i] = 'behind the door'
+                elif (-0.17 <= current_state[10 + i * 35] < -0.04):
+                    obj_pos[i] = 'in the drawer'
+                else:
+                    obj_put.remove(i)
+        return obj_put, obj_pos
 
-        return all_objects_attributes.copy()
+    def get_hidden_ids(current_state):
+        obj_hidden = []
+        for i in range(3):
+            if (current_state[9 + i * 35] > 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.24) and (current_state[113] > 0.22):
+                obj_hidden.append(i)
+            elif (-0.17 <= current_state[10 + i * 35] < -0.04) and (current_state[114] > 0.06):
+                obj_hidden.append(i)
+        return obj_hidden
 
-    get_attributes_functions['all_attributes'] = get_attributes_from_state
+    def get_turn_on(initial_state, current_state):
+        light_on = []
+        if (initial_state[120] == 0) and (current_state[120] == 1):
+            light_on.append('red')
+        if (initial_state[122] == 0) and (current_state[122] == 1):
+            light_on.append('green')
+        if (initial_state[124] == 0) and (current_state[124] == 1):
+            light_on.append('blue')
+        return light_on
 
-    # Extract absolute position of the agent
-    def get_agent_position_attributes(state):
-        agent_pos = state[agent_position_inds]
-        out = []
-        if agent_pos[0] < -0.05:
-            out.append('left')
-        elif agent_pos[0] > 0.05:
-            out.append('right')
-        if agent_pos[1] < -0.05:
-            out.append('bottom')
-        elif agent_pos[1] > 0.05:
-            out.append('top')
-        if agent_pos[0] < - 0.25:
-            if agent_pos[1] < -0.25:
-                out.append('bottom left')
-            elif agent_pos[1] > 0.25:
-                out.append('top left')
-        elif agent_pos[0] > 0.25:
-            if agent_pos[1] < -0.25:
-                out.append('bottom right')
-            elif agent_pos[1] > 0.25:
-                out.append('top right')
-        else:
-            if agent_pos[1] < 0.25 and agent_pos[1] > -0.25 and agent_pos[0] < 0.25 and agent_pos[0] > -0.25:
-                out.append('center')
+    def get_turn_off(initial_state, current_state):
+        light_off = []
+        if (initial_state[120] == 1) and (current_state[120] == 0):
+            light_off.append('red')
+        if (initial_state[122] == 1) and (current_state[122] == 0):
+            light_off.append('green')
+        if (initial_state[124] == 1) and (current_state[124] == 0):
+            light_off.append('blue')
+        return light_off
 
-        return out.copy()
+    def get_make(current_state):
+        if (current_state[115] == 0) and (current_state[116] == 0) and (current_state[117] == 0):
+            panel_color = 'black'
+        elif (current_state[115] == 1) and (current_state[116] == 0) and (current_state[117] == 0):
+            panel_color = 'red'
+        elif (current_state[115] == 0) and (current_state[116] == 1) and (current_state[117] == 0):
+            panel_color = 'green'
+        elif (current_state[115] == 0) and (current_state[116] == 0) and (current_state[117] == 1):
+            panel_color = 'blue'
+        elif (current_state[115] == 1) and (current_state[116] == 1) and (current_state[117] == 0):
+            panel_color = 'yellow'
+        elif (current_state[115] == 1) and (current_state[116] == 0) and (current_state[117] == 1):
+            panel_color = 'magenta'
+        elif (current_state[115] == 0) and (current_state[116] == 1) and (current_state[117] == 1):
+            panel_color = 'cyan'
+        elif (current_state[115] == 1) and (current_state[116] == 1) and (current_state[117] == 1):
+            panel_color = 'white'
+        return panel_color
 
-    # Extract interactions with objects (touched, grasped, grown)
-    def get_touched_obj_ids(state):
-        nb_objs = count_objects(state)
-        agent_position = state[agent_position_inds]
-        touched_ids = []
-        for i_obj in range(nb_objs):
-            obj_features = get_obj_features(state, i_obj)
-            position = obj_features[position_inds]
-            size = obj_features[size_inds]
-            if np.linalg.norm(position - agent_position) < ((agent_size + size) / 2):
-                touched_ids.append(i_obj)
-        return np.array(touched_ids)
-
-    def get_grasped_obj_ids(state):
-        nb_objs = count_objects(state)
-        grasped_ids = []
-        for i_obj in range(nb_objs):
-            obj_features = get_obj_features(state, i_obj)
-            if obj_features[grasped_inds] == 1:
-                grasped_ids.append(i_obj)
-        return np.array(grasped_ids)
-
-    def get_grown_obj_ids(initial_state, state):
-        nb_objs = count_objects(state)
-        grown_ids = []
-        for i_obj in range(nb_objs):
-            initial_obj_features = get_obj_features(initial_state, i_obj)
-            obj_features = get_obj_features(state, i_obj)
-            initial_size = initial_obj_features[size_inds]
-            size = obj_features[size_inds]
-            if size > initial_size + 0.001:
-                grown_ids.append(i_obj)
-        return np.array(grown_ids)
-
-    # Whether a supply is in contact with some non living thing object (to track funny behaviors where agents try to grow furtniture etc).
-    def get_supply_contact_ids(state):
-        nb_objs = count_objects(state)
-        all_obj_features = [get_obj_features(state, i_obj) for i_obj in range(nb_objs)]
-        supply_ids = []
-        non_living_thing_ids = []
-        for i_obj in range(nb_objs):
-            obj_type = get_obj_type(all_obj_features, i_obj)[0]
-            if obj_type in params['categories']['supply']:
-                supply_ids.append(i_obj)
-            elif obj_type not in params['categories']['living_thing']:
-                non_living_thing_ids.append(i_obj)
-        if len(supply_ids) > 0:
-            supply_contact_ids = []
-            for i_supply in supply_ids:
-                for i_non_living in non_living_thing_ids:
-                    if i_supply != i_non_living:
-                        sizes = [all_obj_features[i_supply][size_inds], all_obj_features[i_non_living][size_inds]]
-                        positions = [all_obj_features[i_supply][position_inds], all_obj_features[i_non_living][position_inds]]
-                        if np.linalg.norm(positions[0] - positions[1]) < (sizes[0] + sizes[1]) / 2:
-                            supply_contact_ids.append(i_non_living)
-            return np.array(supply_contact_ids)
-        else:
-            return np.array([])
-
-    get_interactions = dict(get_touched=get_touched_obj_ids,
-                            get_grasped=get_grasped_obj_ids,
-                            get_grown=get_grown_obj_ids,
-                            get_supply_contact=get_supply_contact_ids)
+    def get_paint(initial_state, current_state, obj_stuff):
+        obj_paint = []
+        obj_name = {}
+        color_init = {}
+        color_fina = {}
+        for i in range(3):
+            if (current_state[37 + i * 35] != initial_state[37 + i * 35]) or (current_state[38 + i * 35] != initial_state[38 + i * 35]) or (current_state[39 + i * 35] != initial_state[39 + i * 35]):
+                obj_paint.append(i)
+            name_attributes = []
+            name_attributes.append(obj_stuff[0][i]['type'])     # append painted object type to name_attributes
+            for key, value in params['categories'].items():
+                if obj_stuff[0][i]['type'] in value:
+                    name_attributes.append(key)         # append painted object category to name_attributes
+            obj_name[i] = name_attributes
+            color_init[i] = obj_stuff[0][i]['color']
+            rgb_final = [current_state[37 + i * 35], current_state[38 + i * 35], current_state[39 + i * 35]]
+            color_fina[i] = infer_color(rgb_final)
+        return obj_paint, obj_name, color_init, color_fina
 
 
-    # extract category of a type attribute
-    def find_category_of_attribute(attribute):
-        for k in attributes.keys():
-            if attribute in attributes[k]:
-                return k
-        return None
+    get_interactions = dict(get_open=get_open,
+                            get_close=get_close,
+                            get_grasped=get_grasped_ids,
+                            get_moved=get_moved_ids,
+                            get_put=get_put_ids_pos,
+                            get_hidden=get_hidden_ids,
+                            get_turn_on=get_turn_on,
+                            get_turn_off=get_turn_off,
+                            get_make=get_make,
+                            get_paint=get_paint)
 
-    # check whether an attribute is a relative attribute.
-    def check_if_relative(attribute):
-        attributes = [a for a in attribute.split(' ') if a != 'and']
-        for a in attributes:
-            if 'relative' in find_category_of_attribute(a):
-                return True
-        else:
-            return False
 
-    # Compute all combinations of attributes, in case you want to use up to two attributes
-    def check_equal_cat(a, b):
-        cat_a = find_category_of_attribute(a)
-        cat_b = find_category_of_attribute(b)
-        if cat_a is None or cat_b is None:
-            raise ValueError
-        if cat_a == cat_b:
-            return True
-        elif cat_a in cat_b or cat_b in cat_a:
-            return True
-        else:
-            return False
-
-    # combine two attributes to form a new one. Only works when combining non-relative attributes and adjective attributes.
-    def combine_two(attribute_a, attribute_b):
-        att_combinations = []
-        for a in attribute_a:
-            for b in attribute_b:
-                # if different and not same category
-                if a != b and not check_equal_cat(a, b) and not check_if_relative(a) and not check_if_relative(b):
-                    att_combinations.append('{} and {}'.format(a, b))
-        return tuple(att_combinations)
-
-    params['extract_functions'] = dict(get_interactions=get_interactions,
-                                       get_agent_position_attributes=get_agent_position_attributes,
-                                       count_objects=count_objects,
-                                       get_obj_features=get_obj_features,
-                                       get_attributes_functions=get_attributes_functions,
-                                       find_category_of_attribute=find_category_of_attribute,
-                                       check_if_relative=check_if_relative,
-                                       combine_two=combine_two)
+    params['extract_functions'] = dict(get_nb_floor_objects=get_nb_floor_objects,
+                                       get_interactions=get_interactions)
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    params['img_path'] = dir_path + '/icons/'
+    
     return params

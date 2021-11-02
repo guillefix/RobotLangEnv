@@ -60,8 +60,6 @@ def main():
 
                 state = env.instance.calc_actor_state()
                 obs, r, done, info = env.step(np.array(action))
-                with open('/home/flowers/Desktop/save_obj_types.pk', 'wb') as f:
-                    pk.dump(env.instance.get_stuff_to_save() + [obs], f)
 
 
 if __name__ == "__main__":

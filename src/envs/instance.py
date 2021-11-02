@@ -320,15 +320,17 @@ class instance():
         jointPoses = self.bullet_client.calculateInverseKinematics(which_arm, self.endEffectorIndex, new_pos, orn, )[0:6]
         self.reset_arm_joints(which_arm, jointPoses)
         # Reset arm joints
-        for j in range(8):
-            self.bullet_client.resetJointState(self.arm, j, joint_poses[j])
+        if joint_poses is not None:
+            for j in range(8):
+                self.bullet_client.resetJointState(self.arm, j, joint_poses[j])
         # Reset the left and right gripper
-        self.bullet_client.resetJointState(self.arm, 18, o[7]/23)
-        self.bullet_client.resetJointState(self.arm, 20, o[7]/23)
+        if o is not None:
+            self.bullet_client.resetJointState(self.arm, 18, o[7]/23)
+            self.bullet_client.resetJointState(self.arm, 20, o[7]/23)
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
     def reset(self, o=None, info_reset=None, description=None, joint_poses=None):
-        self.bullet_client.removeAllUserDebugItems()
+        self.bullet_client.removeAllUserDebugItems()      ###### Comment this when running interactive.py
         self.state_dict = dict()
         self.state = None
         self.previous_state = None
@@ -346,7 +348,7 @@ class instance():
             o.update_position()
         self.update_obj_colors()        ###### Comment this when regenerating the scene/image
         self.t = 0
-        self.bullet_client.addUserDebugText(text=description, textPosition=[0, 1, 0.8], textColorRGB=[1, 1, 1], textSize=1.4)        ###### Comment this when regenerating the scene/image 
+        self.bullet_client.addUserDebugText(text=description, textPosition=[0, 1, 0.8], textColorRGB=[1, 1, 1], textSize=1.4)        ###### Comment this when regenerating the scene/image OR when running interactive.py
 
     def get_stuff_to_save(self):
         to_save = [self.objects_added, [o.size_encoding for o in self.objects]]

@@ -134,8 +134,9 @@ In order to run the code, the current path in the terminal should be just inside
 * ```python -m src.envs.utils```: By commenting and uncommenting the code blocks, you can: 1. reconstruct the initial and final image of one episode/trajectory; 2. check if the reward of each episode/trajectory is "True"; 3. create the train and the test dataset. You also need to change the path in the code, and change/define your own criteria of separating the train and test dataset if needed.
 * ```python -m src.envs.vr_data_collection```: Data/Trajectories collection with VR.
 
-**Important**: In the "reset" function of *instance.py*: 1. if you run *interactive.py*, please comment line 333 and line 351; 2. if you regenerate the scene/image, please comment line 349 and line 351.\
+**Important**: In the "reset" function of *instance.py*: 1. if you run *interactive.py*, please comment line 333 and line 351; 2. if you regenerate the scene/image, please comment line 349 and line 351.
 
+## Reference
 The environment is inspired by:\
 [1] Corey Lynch, Mohi Khansari, Ted Xiao, Vikash Kumar, Jonathan Tompson, Sergey Levine, and Pierre Sermanet. Learning latent plans from play. Conference on Robot Learning (CoRL), 2019.\
 [2] Cédric Colas, Tristan Karch, Nicolas Lair, Jean-Michel Dussoux, Clément Moulin-Frier, Peter Dominey, and Pierre-Yves Oudeyer. Language as a cognitive tool to imagine goals in curiosity driven exploration. In H. Larochelle, M. Ranzato, R. Hadsell, M. F. Balcan, and H. Lin, editors, Advances in Neural Information Processing Systems, volume 33, pages 3761–3774. Curran Associates, Inc., 2020.\

@@ -136,6 +136,9 @@ In order to run the code, the current path in the terminal should be just inside
 
 **Important**: In the "reset" function of *instance.py*: 1. if you run *interactive.py*, please comment line 333 and line 351; 2. if you regenerate the scene/image, please comment line 349 and line 351.
 
+## Existing Dataset
+You can find the existing dataset (train set + test set) [here](https://github.com/tlan95/captionRL-dataset).
+
 ## Reference
 The environment is inspired by:\
 [1] Corey Lynch, Mohi Khansari, Ted Xiao, Vikash Kumar, Jonathan Tompson, Sergey Levine, and Pierre Sermanet. Learning latent plans from play. Conference on Robot Learning (CoRL), 2019.\

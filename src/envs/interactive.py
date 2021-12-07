@@ -55,8 +55,8 @@ def main():
 
             else:
                 action = []
-                for i in range(len(controls)):
-                    action.append(env.p.readUserDebugParameter(i))
+                for control in controls:
+                    action.append(env.p.readUserDebugParameter(control))
 
                 state = env.instance.calc_actor_state()
                 obs, r, done, info = env.step(np.array(action))

@@ -65,7 +65,7 @@ class instance():
         self.ul = [7] * self.numDofs
         self.jr = [6] * self.numDofs
         self.record_images = False
-        self.last_obs = None 
+        self.last_obs = None
         self.last_ag = None
 
         sphereRadius = 0.03
@@ -74,7 +74,7 @@ class instance():
         visId = self.bullet_client.createVisualShape(self.bullet_client.GEOM_SPHERE, radius=sphereRadius,
                                                      rgbaColor=[1, 0, 0, 1])
         centering_offset = np.array([0, 0.0, 0.0])
-        self.original_offset = offset 
+        self.original_offset = offset
 
         print(currentdir)
         global ll
@@ -107,7 +107,7 @@ class instance():
         self.pad_color = [float(self.state_buttons[k]) for k in [8, 10, 12]] + [1]
         pad_color = list(np.array([float(self.state_buttons[k]) for k in [8, 10, 12]]) * 0.5 + 0.5 * np.array([0.5] * 3)) + [1]
         self.bullet_client.changeVisualShape(self.pad, -1, rgbaColor=pad_color)
-        
+
         self.state_dict = dict()
         self.state = None
 
@@ -124,16 +124,20 @@ class instance():
         numbers = numbers - offset
         return numbers
 
-    def check_on_pad(self, pos):
-        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and (-0.03 < pos[2] < 0.01)
+    def check_on_pad(self, pos, size):
+        max_size = np.max(size)
+        return (-0.17 < pos[0] < 0.17) and (0.15-0.17 < pos[1]<0.15+0.17) and (-0.03 < pos[2] < max_size/2)
 
     # Update color of object if set on the pad
     def update_obj_colors(self):
         for i, o in enumerate(self.objects):
             if self.previous_state_dict is not None:
                 previous_pos = self.previous_state_dict['obj_{}_{}'.format(i, 'pos')]
+                previous_size = self.previous_state_dict['obj_{}_{}'.format(i, 'size')]
+                # print(previous_size)
                 pos = o.position
-                if self.check_on_pad(pos) and (not self.check_on_pad(previous_pos) or self.switch):
+                size = o.size_encoding
+                if self.check_on_pad(pos,size) and (not self.check_on_pad(previous_pos, previous_size) or self.switch):
                     rgb = self.pad_color.copy()
                     for j in range(len(rgb)-1):
                         if rgb[j] == 1:
@@ -143,7 +147,8 @@ class instance():
                     o.update_color(rgb_dict[str([int(c) for c in self.pad_color[:-1]])], rgb)
             else:
                 pos = o.position
-                if self.check_on_pad(pos):
+                size = o.size_encoding
+                if self.check_on_pad(pos, size):
                     rgb = self.pad_color.copy()
                     for j in range(len(rgb)-1):
                         if rgb[j] == 1:
@@ -199,7 +204,7 @@ class instance():
     # Takes environment steps s.t the sim runs at 25 Hz
     def runSimulation(self):
 
-        self.updateToggles()  
+        self.updateToggles()
 
         for i in range(0, 12):  # 25Hz control at 300
             self.bullet_client.stepSimulation()
@@ -278,7 +283,9 @@ class instance():
                 color = obs[37 + i * 35: 40 + i * 35]
                 self.bullet_client.resetBasePositionAndOrientation(self.objects_ids[i], pos, self.bullet_client.getQuaternionFromEuler(orn))
                 o.update_position()
+                # import pdb; pdb.set_trace()
                 o.update_color(new_rgb = np.array(color.tolist() + [1]))
+                # o.update_color(new_rgb = np.array(color.tolist()))
             stop = 1
 
 
@@ -329,7 +336,7 @@ class instance():
             self.bullet_client.resetJointState(self.arm, 20, o[7]/23)
 
     # Overall reset function, passes o to the above specific reset functions if sepecified
-    def reset(self, o=None, info_reset=None, description=None, joint_poses=None):
+    def reset(self, o=None, objects=None, info_reset=None, description=None, joint_poses=None, restore_objs=False):
         self.bullet_client.removeAllUserDebugItems()      ###### Comment this when running interactive.py
         self.state_dict = dict()
         self.state = None
@@ -340,10 +347,15 @@ class instance():
         for obj_id in self.objects_ids:
             self.bullet_client.removeBody(obj_id)
 
-        self.objects, self.objects_ids, self.objects_added = sample_objects(description, self.bullet_client, self.env_params, self.num_objects, info_reset)
+        # self.objects, self.objects_ids, self.objects_added = sample_objects(description, self.bullet_client, self.env_params, self.num_objects, info_reset)
+        if restore_objs:
+            self.objects, self.objects_ids, self.objects_added = restore_objects(o, self.bullet_client, self.env_params, self.num_objects, info_reset, objects)
+            self.reset_objects(o)
+        else:
+            print(description)
+            self.objects, self.objects_ids, self.objects_added = sample_objects(description, self.bullet_client, self.env_params, self.num_objects, info_reset)
         # print("Arm nb joints: ", self.bullet_client.getNumJoints(self.arm))
         self.reset_arm(which_arm=self.arm, o=o, joint_poses=joint_poses)
-        self.reset_objects(o)
         for o in self.objects:
             o.update_position()
         self.update_obj_colors()        ###### Comment this when regenerating the scene/image
@@ -353,7 +365,7 @@ class instance():
     def get_stuff_to_save(self):
         to_save = [self.objects_added, [o.size_encoding for o in self.objects]]
         return to_save
-    
+
     # Binary return indicating if something is between the gripper prongs
     def gripper_proprioception(self):
         if self.arm_type == 'UR5':
@@ -489,7 +501,7 @@ class instance():
             'observation': state_euler.copy(),
             'gripper_proprioception': arm_state['proprioception']
         }
-        
+
         self.state = return_dict.copy()
         if self.previous_state == None:
             self.previous_state = self.state

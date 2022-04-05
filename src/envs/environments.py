@@ -53,8 +53,8 @@ class playEnv(gym.GoalEnv):
 
     def __init__(self, num_objects = 0, env_range_low = [-0.18, -0.18,-0.05 ], env_range_high = [0.18, 0.18, 0.15], goal_range_low = [-0.18, -0.18, -0.05], goal_range_high = [0.18, 0.18, 0.05],
                  obj_lower_bound = [-0.18, -0.18, -0.05], obj_upper_bound = [-0.18, -0.18, -0.05], sparse=True, use_orientation=False,
-                 sparse_rew_thresh=0.05, fixed_gripper = False, return_velocity=True, max_episode_steps=250, 
-                 play=False, action_type = 'absolute_rpy', show_goal=True, arm_type= 'UR5'): 
+                 sparse_rew_thresh=0.05, fixed_gripper = False, return_velocity=True, max_episode_steps=250,
+                 play=False, action_type = 'absolute_rpy', show_goal=True, arm_type= 'UR5'):
         fps = 300
         self.timeStep = 1. / fps
         self.render_scene = False
@@ -71,7 +71,7 @@ class playEnv(gym.GoalEnv):
         self._max_episode_steps = max_episode_steps
         self.env_params = get_env_params()
 
-        obs_dim += 7 * num_objects  
+        obs_dim += 7 * num_objects
         pos_step = 0.015
         orn_step = 0.1
         if action_type == 'absolute_rpy':
@@ -103,14 +103,14 @@ class playEnv(gym.GoalEnv):
         lower_full_positional_state = np.concatenate([self.arm_lower_lim] + [obj_lower_positional_lim] * self.num_objects) # like the obs dim, but without velocity.
         upper_full_positional_state = np.concatenate([self.arm_upper_lim] + [obj_upper_positional_lim] * self.num_objects)
 
-        
+
         self.observation_space = spaces.Dict(dict(observation=spaces.Box(lower_obs_dim, upper_obs_dim),
                                                   full_positional_state=spaces.Box( lower_full_positional_state, upper_full_positional_state)
                                                   ))
 
 
     # Resets the instances until reward is not satisfied
-    def reset(self, o = None, vr =None, description=None, info_reset=None, joint_poses=None):
+    def reset(self, o = None, vr =None, description=None, info_reset=None, joint_poses=None, objects=None, restore_objs=False):
 
 
         if not self.physics_client_active:
@@ -118,8 +118,8 @@ class playEnv(gym.GoalEnv):
             self.physics_client_active = True
 
         # print("env info_reset:", info_reset)
-        self.instance.reset(o, info_reset=info_reset, description=description, joint_poses=joint_poses)
-        
+        self.instance.reset(o, info_reset=info_reset, description=description, joint_poses=joint_poses, objects=objects, restore_objs=restore_objs)
+
 
     def render(self, mode):
         if (mode == "human"):
@@ -184,4 +184,3 @@ class playEnv(gym.GoalEnv):
                                   num_objects=self.num_objects, arm_type=self.arm_type)
         self.instance.control_dt = self.timeStep
         self.physics_client_active = True
-

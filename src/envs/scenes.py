@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from src.envs.objects import build_object
+from src.envs.color_generation import infer_color
 
 TEST_OLD = True
 
@@ -48,8 +49,36 @@ def sample_objects(description, bullet_client, env_params, num_objects, info_res
     legos_p_ids = [l.p_id for l in legos[0]]
     return legos[0], legos_p_ids, legos[3]
 
+def restore_objects(obs, bullet_client, env_params, num_objects, info_reset=None, objects=None):
+    # print("scenes info_reset: ", info_reset)
+    if np.any(info_reset) != None:
+        assert obs is None
+        objects_to_add, sizes = info_reset
+    elif objects is not None:
+        objects_to_add = objects
+        sizes = None
+    else:
+        objects_to_add = []
+        for i in range(3):
+            otype_enc =  obs[14 + i * 35: 37 + i * 35]
+            col =  obs[37 + i * 35: 40 + i * 35]
+            col = infer_color(col)
+            otype_index = np.argwhere(otype_enc == 1.0)[0][0]
+            print(otype_index)
+            object_type = env_params['types'][otype_index]
+            obj = dict(type=object_type,
+                        color=col,
+                        category=None)
+
+            objects_to_add.append(obj)
+        sizes = None
+    print(objects_to_add)
+    legos = get_objects(env_params, bullet_client, objects_to_add, num_objects, sizes)
+    legos_p_ids = [l.p_id for l in legos[0]]
+    return legos[0], legos_p_ids, legos[3]
 
 def get_required_obj(description, env_params):
+    print(description)
     objects_to_add = []
     if description == None:
         return []
@@ -100,6 +129,7 @@ def get_required_obj(description, env_params):
                 obj = dict(type=None,
                            color=None,
                            category=None)
+                print(env_params['types'])
                 if words[-2] in env_params['types']:
                     obj['type'] = words[-2]
                 elif words[-2] in env_params['categories']:
@@ -111,6 +141,8 @@ def get_required_obj(description, env_params):
                 else:
                     obj['color'] = np.random.choice(sorted(set(env_params['colors_attributes']) - set(target_color)))
                 objects_to_add.append(obj)
+
+    print(objects_to_add)
     return objects_to_add
 
 #
@@ -420,4 +452,3 @@ def add_pad(bullet_client, offset=np.array([0, 0, 0]), flags=None, thickness = 1
 
 
     return pad
-

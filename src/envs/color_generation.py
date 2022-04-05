@@ -100,8 +100,10 @@ def sample_color(color):
     return color_class.sample()
 
 def infer_color(rgb):
+    rgb = rgb.astype(np.float32)
     for c in ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']:
         color_class = Color(c)
+        # import pdb; pdb.set_trace()
         if color_class.contains(rgb):
             return c
     raise ValueError

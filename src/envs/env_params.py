@@ -1,4 +1,5 @@
 import os
+import numpy as np
 
 from src.envs.color_generation import *
 
@@ -65,7 +66,11 @@ def get_env_params(max_nb_objects=3,
     types = ()
     for k_c in categories.keys():
         types += categories[k_c]
-    types = tuple(set(types)) # filters doubles, when some categories include others.
+    # types = tuple(set(types)) # filters doubles, when some categories include others.
+    import pickle
+    # import os
+    # print(os.getcwd())
+    types = pickle.load(open("/home/guillefix/code/inria/captionRLenv/object_types.pkl","rb"))
     nb_types = len(types)
 
     # List attributes + others
@@ -104,7 +109,7 @@ def get_env_params(max_nb_objects=3,
             any_all_attributes += attributes[att_type]
         elif att_type == 'rgbb':
             rgbb_attributes += attributes[att_type]
-        
+
 
 
     # This defines the list of occurrences that should belong to the test set. All descriptions that contain them belong to the test set.
@@ -174,7 +179,7 @@ def get_env_params(max_nb_objects=3,
             if (initial_state[10 + i * 35] > -0.17) and (current_state[10 + i * 35] < -0.2):
                 nb = nb + 1
         return nb
-    
+
     # Extract interactions with objects
     def get_open(initial_state, current_state):
         open = []
@@ -210,18 +215,24 @@ def get_env_params(max_nb_objects=3,
     def get_put_ids_pos(initial_state, current_state):
         obj_put = []
         obj_pos = {}
+        door_pos = current_state[113]
+        drawer_pos = current_state[114]
         for i in range(3):
-            if (abs(current_state[8 + i * 35] - initial_state[8 + i * 35]) > 0.0001) or (abs(current_state[9 + i * 35] - initial_state[9 + i * 35]) > 0.0001):
+            pos = current_state[8 + i * 35:11 + i * 35]
+            size = current_state[i*35+8+32:i*35+8+35]
+            vertical_size = np.max(size)
+            init_pos = initial_state[8 + i * 35:11 + i * 35]
+            if (abs(pos[0] - init_pos[0]) > 0.0001) or (abs(pos[1] - init_pos[1]) > 0.0001):
                 obj_put.append(i)
-                if (current_state[8 + i * 35] < 0) and (current_state[9 + i * 35] <= 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.08):
+                if (-0.6 <= pos[0] < 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
                     obj_pos[i] = 'on the left side of the table'
-                elif (current_state[8 + i * 35] > 0) and (current_state[9 + i * 35] <= 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.08):
+                elif (0.6 >= pos[0] > 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
                     obj_pos[i] = 'on the right side of the table'
-                elif (current_state[9 + i * 35] > 0.32) and (current_state[10 + i * 35] > 0.24):
+                elif (-0.6 <= pos[0] <= 0.6) and (0.32 <= pos[1] < 0.6) and ( 0.22 < pos[2] < 0.32):
                     obj_pos[i] = 'on the shelf'
-                elif (current_state[9 + i * 35] > 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.24):
+                elif (door_pos-0.17 < pos[0] < door_pos+0.17) and (0.32 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22):
                     obj_pos[i] = 'behind the door'
-                elif (-0.17 <= current_state[10 + i * 35] < -0.04):
+                elif (-0.17 <= pos[0] <= 0.17) and (drawer_pos - 0.1 < pos[1] < drawer_pos + 0.14) and (-0.17 <= pos[2] < -0.04):
                     obj_pos[i] = 'in the drawer'
                 else:
                     obj_put.remove(i)
@@ -290,7 +301,7 @@ def get_env_params(max_nb_objects=3,
                     name_attributes.append(key)         # append painted object category to name_attributes
             obj_name[i] = name_attributes
             color_init[i] = obj_stuff[0][i]['color']
-            rgb_final = [current_state[37 + i * 35], current_state[38 + i * 35], current_state[39 + i * 35]]
+            rgb_final = np.array([current_state[37 + i * 35], current_state[38 + i * 35], current_state[39 + i * 35]])
             color_fina[i] = infer_color(rgb_final)
         return obj_paint, obj_name, color_init, color_fina
 
@@ -311,5 +322,5 @@ def get_env_params(max_nb_objects=3,
                                        get_interactions=get_interactions)
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    
+
     return params

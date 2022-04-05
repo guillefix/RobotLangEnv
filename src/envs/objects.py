@@ -7,7 +7,8 @@ import pickle
 
 ENV_PARAMS = get_env_params()
 
-path = "./src/envs/shapenet_objects/"    # If the relative path doesn't work, we can use the absolute (complete) path.
+# path = "./src/envs/shapenet_objects/"    # If the relative path doesn't work, we can use the absolute (complete) path.
+path = "/home/guillefix/code/inria/captionRLenv/src/envs/shapenet_objects/"    # If the relative path doesn't work, we can use the absolute (complete) path.
 
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]
 with open(path + 'sizes.pkl', 'rb') as f:
@@ -75,7 +76,7 @@ class Thing:
             self.attributes.append(self.color)
             if old_color is not None:
                 self.attributes.remove(old_color)
-   
+
     def update_position(self, new_position=None):
         if new_position is None:
             new_position, new_orientation = self.bullet_client.getBasePositionAndOrientation(self.p_id)
@@ -199,11 +200,11 @@ class ShapeNet(Thing):
         self.bullet_client.changeVisualShape(boxId, -1, rgbaColor=self.rgb_encoding + [1])
         return boxId
 
- 
+
 
 
 # CATEGORIES
-            
+
 class Solid(Thing):
     def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
@@ -239,7 +240,7 @@ class Vehicle(ShapeNet):
 class Cube(Solid):
     def __init__(self, env_params, bullet_client, object_type, color, object_id, objects, size=None):
         super().__init__(env_params, bullet_client, object_type, color, object_id, objects, size=size)
-            
+
     def generate_object(self):
         sizes = [self.size_encoding / (np.sqrt(3) * 2) * 0.75] * 3
         self.sizes = sizes.copy()

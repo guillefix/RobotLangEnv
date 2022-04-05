@@ -21,17 +21,18 @@ if "DATA_FOLDER" not in os.environ:
 else:
     data_folder = os.environ["DATA_FOLDER"]
 
-if args.eval_train_demos:
-
+if args.base_filenames is not None:
     with open(args.base_filenames_file, "r") as f:
         filenames = [x[:-1] for x in f.readlines()] # to remove new lines
-
     #filenames = filenames[:2]
+
+if args.eval_train_demos:
     tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], "restore_objects": True}, filenames))
     tasks = distribute_tasks(tasks, rank, size)
 
 else:
-    raise NotImplementedError
+    tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], "restore_objects": False}, filenames))
+    tasks = distribute_tasks(tasks, rank, size)
 
 for task in tasks:
     evaluate(**task)

@@ -1,5 +1,7 @@
-
+import numpy as np
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
+color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
+from src.envs.color_generation import infer_color
 
 def get_obs_cont(obs):
     obs_color1 = obs[37:40].astype(np.float64)
@@ -51,7 +53,7 @@ def fix_quaternions(rot_stream):
         prev_rot = rot_stream[i]
 
     return rot_stream
-    
+
 def one_hot(x,n):
     a = np.zeros(n)
     a[x]=1

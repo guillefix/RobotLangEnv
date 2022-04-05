@@ -11,6 +11,7 @@ import pybullet as p
 from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
 from extra_utils.data_utils import get_obs_cont, get_obj_types, fix_quaternions, one_hot
+from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
 
 color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
 
@@ -18,6 +19,11 @@ if "ROOT_FOLDER" not in os.environ:
     root_folder="/home/guillefix/code/inria/captionRLenv/"
 else:
     root_folder = os.environ["ROOT_FOLDER"]
+
+if "PRETRAINED_FOLDER" not in os.environ:
+    pretrained_folder="/home/guillefix/code/inria/pretrained/"
+else:
+    pretrained_folder = os.environ["PRETRAINED_FOLDER"]
 if "DATA_FOLDER" not in os.environ:
     data_folder="/home/guillefix/code/inria/UR5/"
 else:
@@ -33,6 +39,7 @@ else:
 
 '''
 export ROOT_FOLDER=/mnt/tianwei/captionRLenv/
+export PRETRAINED_FOLDER=/mnt/tianwei/pretrained/
 export DATA_FOLDER=/mnt/tianwei/UR5/
 export PROCESSED_DATA_FOLDER=/mnt/tianwei/UR5_processed/
 export ROOT_DIR_MODEL=/mnt/multimodal-transflower/
@@ -42,6 +49,10 @@ import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')
+parser.add_argument('--goal_str', help='specify goal string (if not specified, we use the one from the demo)')
+parser.add_argument('--zero_seed', action='store_true', help='whether to seed the obs and acts with zeros or with the beginning of the demo')
+parser.add_argument('--random_seed', action='store_true', help='whether to seed the obs and acts with a standard normal distribution')
+parser.add_argument('--using_torchscript', action='store_true', help='whether to use torchscript compiled model or not')
 parser.add_argument('--session_id', help='the session from which to restore the demo')
 parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
 parser.add_argument('--experiment_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
@@ -51,11 +62,13 @@ parser.add_argument('--dynamic_temp', action='store_true', help='whether to use 
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
-def evaluate(using_model=False, render=False, session_id=None, rec_id=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000):
+def evaluate(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False):
     # LOAD demo
     traj_data = np.load(data_folder+session_id+"/obs_act_etc/"+rec_id+"/data.npz", allow_pickle=True)
-    goal_str = str(traj_data['goal_str'][0])
+    if goal_str is None:
+        goal_str = str(traj_data['goal_str'][0])
     print(goal_str)
+
     #tokenize goal_str
     import json
     d=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
@@ -71,13 +84,15 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
             else:
                 tokens.append(66)
 
+        tokens = np.array(tokens)
+
         import torch
 
         import sys
         sys.path.append(root_dir_model)
         from inference.generate import load_model_from_logs_path
 
-        default_save_path = "pretrained/"+experiment_name
+        default_save_path = pretrained_folder+experiment_name
         logs_path = default_save_path
         #load model:
         model, opt = load_model_from_logs_path(logs_path)
@@ -85,44 +100,40 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
             print("Using torchscript")
             model = torch.jit.load(model_folder+'compiled_jit.pth')
 
-        input_dims = opt["input_dims"].split(",")
-        context_size_obs=input_dims[1]
-        context_size_act=input_dims[2]
+        input_dims = [int(x) for x in opt.dins.split(",")]
+        input_lengths = [int(x) for x in opt.input_lengths.split(",")]
+        context_size_obs=input_lengths[1]
+        context_size_acts=input_lengths[2]
 
-        input_mods = opt["input_mods"].split(",")
+        input_mods = opt.input_modalities.split(",")
 
         obs_scaler = pickle.load(open(processed_data_folder+input_mods[1]+"_scaler.pkl", "rb"))
         acts_scaler = pickle.load(open(processed_data_folder+input_mods[2]+"_scaler.pkl", "rb"))
 
 
         filename = "UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"
-        obs_traj = np.load(data_folder+filename+"."+input_mods[1]+".npy")
+        obs_traj = np.load(processed_data_folder+filename+"."+input_mods[1]+".npy")
         obs_traj_unscaled = obs_scaler.inverse_transform(obs_traj)
-        acts_traj = np.load(data_folder+filename+"."+input_mods[2]+".npy")
-        acts_traj_unscaled = obs_scaler.inverse_transform(acts_traj)
+        acts_traj = np.load(processed_data_folder+filename+"."+input_mods[2]+".npy")
+        acts_traj_unscaled = acts_scaler.inverse_transform(acts_traj)
 
 
         # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")
-        if input_dims[0] == 10:
+        if input_lengths[0] == 10:
             tokens = np.concatenate([tokens[:1], tokens[2:]])
-        elif input_dims[0] == 14:
+        elif input_lengths[0] == 14:
             obj_types = get_obj_types(obs_traj)
             tokens = np.concatenate([tokens, obj_types])
 
-        obj_index = -1
-        if input_mods[1] in ["obs_cont_single_nocol_noarm_trim_scaled", "obs_cont_single_nocol_noarm_scaled"]:
-            has_conc_obj, color, object_type = has_concrete_object_ann(goal_str)
-            print(color, object_type)
-            # assert has_conc_obj
-            exact_one_object, obj_index = check_if_exact_one_object_obs(obs_cont, disc_cond, color, object_type)
-            # assert exact_one_object
-
         if zero_seed:
             prev_obs = obs_scaler.inverse_transform(np.zeros((context_size_obs,18)))
-            prev_acts = acts_scaler.inverse_transform(np.zeros((context_size_act,8)))
+            prev_acts = acts_scaler.inverse_transform(np.zeros((context_size_acts,8)))
+        elif random_seed:
+            prev_obs = obs_scaler.inverse_transform(np.random.randn(context_size_obs,18))
+            prev_acts = acts_scaler.inverse_transform(np.random.randn(context_size_acts,8))
         else:
             prev_obs = obs_traj_unscaled[:context_size_obs]
-            prev_acts = obs_traj_unscaled[:context_size_acts]
+            prev_acts = acts_traj_unscaled[:context_size_acts]
 
         prev_acts2 = traj_data['acts'][:20]
 
@@ -139,8 +150,8 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
             return [tokens, torch.from_numpy(prev_obs).unsqueeze(1).float().cuda(), torch.from_numpy(prev_acts).unsqueeze(1).float().cuda()]
             # return [torch.from_numpy(tokens).unsqueeze(1).unsqueeze(1).cpu(), torch.from_numpy(prev_obs).unsqueeze(1).float().cpu(), torch.from_numpy(prev_acts).unsqueeze(1).float().cpu()]
 
+        inputs = make_inputs(tokens, prev_obs, prev_acts)
         if using_torchscript:
-            inputs = make_inputs(tokens, prev_obs, prev_acts)
             out = model(inputs)
             out = model(inputs)
             print(out.shape)
@@ -177,7 +188,24 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
     from src.envs.env_params import get_env_params
     if render:
         env.render(mode='human')
-    env.reset(o=traj_data["obs"][0], info_reset=None, description=goal_str, joint_poses=traj_data["joint_poses"][0], objects=traj_data['obj_stuff'][0], restore_objs=restore_objects)
+
+    objects = traj_data['obj_stuff'][0] if restore_objects else None
+    env.reset(o=traj_data["obs"][0], info_reset=None, description=goal_str, joint_poses=traj_data["joint_poses"][0], objects=objects, restore_objs=restore_objects)
+
+    if using_model:
+        obj_index = -1
+        if input_mods[1] in ["obs_cont_single_nocol_noarm_trim_scaled", "obs_cont_single_nocol_noarm_scaled"]:
+            has_conc_obj, color, object_type = has_concrete_object_ann(goal_str)
+            print(color, object_type)
+            # assert has_conc_obj
+            # exact_one_object, obj_index = check_if_exact_one_object_obs(obs_cont, disc_cond, color, object_type)
+            objects = env.instance.objects_added
+            matches = 0
+            for i, obj in enumerate(objects):
+                if obj['type'] == object_type and obj['color'] == color:
+                    matches += 1
+                    obj_index = i
+            # assert exact_one_object
 
     from src.envs.reward_function import get_reward_from_state
 
@@ -187,7 +215,7 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
     else:
         controls = add_xyz_rpy_controls(env)
 
-    dynamic_temp_delta=0.99
+    # dynamic_temp_delta=0.99
     achieved_goal_end=False
     achieved_goal_anytime=False
     for i in range(max_number_steps):
@@ -206,7 +234,7 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
                 else:
                     variance = np.max(np.abs(prev_acts2[0]-prev_acts2[-1]))
                     if dynamic_temp:
-                        temp = np.max([temp*temp_delta +(1-temp_delta)*10*np.tanh(0.01/variance), 0.5])
+                        temp = np.max([temp*dynamic_temp_delta +(1-dynamic_temp_delta)*10*np.tanh(0.01/variance), 0.5])
                     else:
                         temp = temp
                     acts = model(inputs, temp=temp)[0][0][0].cpu()
@@ -221,12 +249,15 @@ def evaluate(using_model=False, render=False, session_id=None, rec_id=None, expe
             # print(action)
             state = env.instance.calc_actor_state()
             obs, r, done, info = env.step(np.array(action))
+            if using_model:
+                print(obs[8+35*obj_index:11+35*obj_index])
+                print(obs[113])
 
             # obs[8:11] = [-0.3,0,max_size/2]
             # obs[8:11] = [-0.6,0,0.08]
             # obs[8:11] = [0.6,0.6,0.24]
-            # obs[8:11] = [-0.17,0.14,-0.14]
-            # env.instance.reset_objects(obs)
+            obs[8:11] = [-0.3,0.4,0.04]
+            env.instance.reset_objects(obs)
 
             if i == 0:
                 initial_state = obs

@@ -70,7 +70,11 @@ def get_env_params(max_nb_objects=3,
     import pickle
     # import os
     # print(os.getcwd())
-    types = pickle.load(open("/home/guillefix/code/inria/captionRLenv/object_types.pkl","rb"))
+    if "ROOT_FOLDER" not in os.environ:
+        root_folder="/home/guillefix/code/inria/captionRLenv/"
+    else:
+        root_folder = os.environ["ROOT_FOLDER"]
+    types = pickle.load(open(root_folder+"object_types.pkl","rb"))
     nb_types = len(types)
 
     # List attributes + others

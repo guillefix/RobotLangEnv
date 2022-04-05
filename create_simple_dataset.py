@@ -1,6 +1,10 @@
 import numpy as np
-root_folder="/home/guillefix/code/inria/UR5_processed/"
-filenames=[x[:-1] for x in open(root_folder+"base_filenames.txt","r").readlines()]
+import os
+root_folder = None
+if "PROCESSED_DATA_FOLDER" not in os.environ:
+    root_folder="/home/guillefix/code/inria/UR5_processed/"
+else:
+    root_folder = os.environ["PROCESSED_DATA_FOLDER"]
 
 
 # actions = ('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw')
@@ -45,7 +49,7 @@ def has_concrete_object_ann(ann):
         return False, None, None
 
 import json
-vocab = json.loads(open("/home/guillefix/code/inria/UR5_processed/acts.npy.annotation.class_index_reverse.json","r").read())
+vocab = json.loads(open(root_folder+"acts.npy.annotation.class_index_reverse.json","r").read())
 
 def check_if_exact_one_object(filename, color, object_type):
     disc_cond_file = root_folder+filename+".disc_cond.npy"
@@ -106,6 +110,7 @@ def get_new_obs_obs(obs, obj_index, nocol=False, noarm=False):
 # get_new_obs(filenames[0], 0).shape
 
 if __name__ == "__main__":
+    filenames=[x[:-1] for x in open(root_folder+"base_filenames.txt","r").readlines()]
 
     new_base_filenames_file = open(root_folder+"base_filenames_single_objs.txt", "w")
     paint_anns = []

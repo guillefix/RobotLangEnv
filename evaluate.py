@@ -2,6 +2,8 @@ import numpy as np
 import time
 import torch.nn.functional as F
 import pickle
+from pathlib import Path
+import os
 
 from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
@@ -9,14 +11,34 @@ from utils.data_utils import get_obs_cont, get_obj_types, fix_quaternions, one_h
 
 color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
 
-root_folder="/home/guillefix/code/inria/captionRLenv/"
-data_folder="/home/guillefix/code/inria/UR5/"
-processed_data_folder="/home/guillefix/code/inria/UR5_processed/"
-root_dir_model = "/home/guillefix/code/multimodal-transflower"
+if "ROOT_FOLDER" not in os.environ:
+    root_folder="/home/guillefix/code/inria/captionRLenv/"
+else:
+    root_folder = os.environ["ROOT_FOLDER"]
+if "DATA_FOLDER" not in os.environ:
+    data_folder="/home/guillefix/code/inria/UR5/"
+else:
+    data_folder = os.environ["DATA_FOLDER"]
+if "PROCESSED_DATA_FOLDER" not in os.environ:
+    processed_data_folder="/home/guillefix/code/inria/UR5_processed/"
+else:
+    processed_data_folder=os.environ["PROCESSED_DATA_FOLDER"]
+if "ROOT_DIR_MODEL" not in os.environ:
+    root_dir_model = "/home/guillefix/code/multimodal-transflower"
+else:
+    root_dir_model = os.environ["ROOT_DIR_MODEL"]
+
+'''
+export ROOT_FOLDER=/mnt/tianwei/captionRLenv/
+export DATA_FOLDER=/mnt/tianwei/UR5/
+export PROCESSED_DATA_FOLDER=/mnt/tianwei/UR5_processed/
+export ROOT_DIR_MODEL=/mnt/multimodal-transflower/
+'''
 
 import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
+parser.add_argument('--render', action='store_true', help='whether to render the environment')
 parser.add_argument('--session_id', help='the session from which to restore the demo')
 parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
 parser.add_argument('--experiment_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
@@ -24,6 +46,7 @@ parser.add_argument('--restore_objects', action='store_true', help='whether to r
 parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
+parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
 args = parser.parse_args()
 
@@ -157,7 +180,8 @@ env.env_params['types'] = object_types
 #%%
 from src.envs.descriptions import generate_all_descriptions
 from src.envs.env_params import get_env_params
-env.render(mode='human')
+if args.render:
+    env.render(mode='human')
 env.reset(o=traj_data["obs"][0], info_reset=None, description=goal_str, joint_poses=traj_data["joint_poses"][0], objects=traj_data['obj_stuff'][0], restore_objs=args.restore_objects)
 
 from src.envs.reward_function import get_reward_from_state
@@ -169,7 +193,9 @@ else:
     controls = add_xyz_rpy_controls(env)
 
 args.dynamic_temp_delta=0.99
-for i in range(1000000):
+achieved_goal_end=False
+achieved_goal_anytime=False
+for i in range(args.max_number_steps):
 
     if joint_control:
         poses  = []
@@ -192,6 +218,8 @@ for i in range(1000000):
             acts = acts_scaler.inverse_transform(acts)
             acts = acts[0]
         else:
+            if i>len(traj_data['acts'])-1:
+                break
             acts = traj_data['acts'][i]
 
         action = [acts[0],acts[1],acts[2]] + list(p.getEulerFromQuaternion(acts[3:7])) + [acts[7]]
@@ -209,7 +237,14 @@ for i in range(1000000):
             initial_state = obs
         else:
             current_state = obs
-            print(goal_str+": ",get_reward_from_state(initial_state, current_state, traj_data['obj_stuff'], goal_str, env.instance.env_params))
+            success = get_reward_from_state(initial_state, current_state, traj_data['obj_stuff'], goal_str, env.instance.env_params)
+            print(goal_str+": ",success)
+            achieved_goal_end = success
+            if success:
+                achieved_goal_anytime = True
+            if args.using_model:
+                if success:
+                    break
 
         if args.using_model:
             new_obs = obs
@@ -224,3 +259,38 @@ for i in range(1000000):
             prev_acts = np.concatenate([prev_acts[1:],acts[None]])
             prev_acts2 = np.concatenate([prev_acts2[1:],acts[None]])
             inputs = make_inputs(tokens, prev_obs, prev_acts)
+
+if not Path(root_folder+"results").is_dir():
+    os.mkdir(root_folder+"results")
+if args.using_model:
+    filename = root_folder+"results/eval_"+args.experiment_name+"_"+args.session_id+"_"+args.rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(args.restore_objects)+".txt"
+    if os.path.exists(filename):
+        with open(filename, "a") as f:
+            f.write(str(achieved_goal_end)+","+str(i)+"\n")
+    else:
+        with open(filename, "w") as f:
+            f.write("achieved_goal_end,num_steps"+"\n")
+            f.write(str(achieved_goal_end)+","+str(i)+"\n")
+else:
+    if not Path(root_folder+"results/eval_demos").is_dir():
+        os.mkdir(root_folder+"results/eval_demos")
+    filename = root_folder+"results/eval_demos/"+args.session_id+"_"+args.rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(args.restore_objects)+".txt"
+    if achieved_goal_anytime:
+        with open(root_folder+"results/eval_demos/achieved_goal_anytime.txt", "a") as f:
+            f.write("UR5_"+args.session_id+"_obs_act_etc_"+args.rec_id+"_data"+","+goal_str+"\n")
+    if achieved_goal_end:
+        with open(root_folder+"results/eval_demos/achieved_goal_end.txt", "a") as f:
+            f.write("UR5_"+args.session_id+"_obs_act_etc_"+args.rec_id+"_data"+","+goal_str+"\n")
+    if not achieved_goal_anytime:
+        with open(root_folder+"results/eval_demos/not_achieved_goal_anytime.txt", "a") as f:
+            f.write("UR5_"+args.session_id+"_obs_act_etc_"+args.rec_id+"_data"+","+goal_str+"\n")
+    if not achieved_goal_end:
+        with open(root_folder+"results/eval_demos/not_achieved_goal_end.txt", "a") as f:
+            f.write("UR5_"+args.session_id+"_obs_act_etc_"+args.rec_id+"_data"+","+goal_str+"\n")
+    if os.path.exists(filename):
+        with open(filename, "a") as f:
+            f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(i)+"\n")
+    else:
+        with open(filename, "a") as f:
+            f.write("achieved_goal_anytime,achieved_goal_end,num_steps"+"\n")
+            f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(i)+"\n")

@@ -26,7 +26,7 @@ if args.eval_train_demos:
     with open(args.base_filenames_file, "r") as f:
         filenames = [x[:-1] for x in f.readlines()] # to remove new lines
 
-    filenames = filenames[:12]
+    #filenames = filenames[:2]
     tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], "restore_objects": True}, filenames))
     tasks = distribute_tasks(tasks, rank, size)
 

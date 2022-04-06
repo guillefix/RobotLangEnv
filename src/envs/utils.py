@@ -16,7 +16,7 @@ def generate_urdfs(object_folder="./src/envs/ShapeNet/VEHICLE/"):
     builder.build_library(force_overwrite=True, decompose_concave=True, force_decompose=False, center = 'top')
 
 
-    
+
 
 
 # # Generate urdf files for ShapeNet objects
@@ -60,14 +60,14 @@ def generate_urdfs(object_folder="./src/envs/ShapeNet/VEHICLE/"):
 
 
 # # save initial image of an episode
-# env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init) 
-# img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+# env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init)
+# img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                            renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 # plot1 = plt.figure(1)
 # plt.imshow(img_arr_init)
 # # save final image of an episode
-# env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final) 
-# img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+# env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final)
+# img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                            renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 # plot2 = plt.figure(2)
 # plt.imshow(img_arr_final)
@@ -137,20 +137,20 @@ def generate_urdfs(object_folder="./src/envs/ShapeNet/VEHICLE/"):
 #             os.makedirs('./src/envs/dataset_images/train/')
 #         if not os.path.exists('./src/envs/dataset_images/test/'):
 #             os.makedirs('./src/envs/dataset_images/test/')
-        
-        
+
+
 #         if train_des:
 #             count_train = len(list(os.listdir('./src/envs/dataset_images/train/')))
 #             os.makedirs('./src/envs/dataset_images/train/' + str(count_train) + '/')
 
 #             # save initial image of an episode
-#             env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init) 
-#             img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+#             env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init)
+#             img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 #             plt.imsave('./src/envs/dataset_images/train/' + str(count_train) + '/initial.png', img_arr_init)
 #             # save final image of an episode
-#             env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final) 
-#             img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+#             env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final)
+#             img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 #             plt.imsave('./src/envs/dataset_images/train/' + str(count_train) + '/final.png', img_arr_final)
 #         if test_des:
@@ -158,13 +158,13 @@ def generate_urdfs(object_folder="./src/envs/ShapeNet/VEHICLE/"):
 #             os.makedirs('./src/envs/dataset_images/test/' + str(count_test) + '/')
 
 #             # save initial image of an episode
-#             env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init) 
-#             img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+#             env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init)
+#             img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 #             plt.imsave('./src/envs/dataset_images/test/' + str(count_test) + '/initial.png', img_arr_init)
 #             # save final image of an episode
-#             env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final) 
-#             img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+#             env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final)
+#             img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
 #                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 #             plt.imsave('./src/envs/dataset_images/test/' + str(count_test) + '/final.png', img_arr_final)
 
@@ -207,19 +207,19 @@ for i in range(101):
             os.makedirs('./src/envs/dataset/train/')
         if not os.path.exists('./src/envs/dataset/test/'):
             os.makedirs('./src/envs/dataset/test/')
-        
+
 
         if train_des:
             count_train = len(list(os.listdir('./src/envs/dataset/train/')))
             os.makedirs('./src/envs/dataset/train/' + str(count_train) + '/')
 
             # save initial image of an episode
-            env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init) 
-            img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+            env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init)
+            img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
             # save final image of an episode
-            env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final) 
-            img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+            env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final)
+            img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 
             np.savez('./src/envs/dataset/train/' + str(count_train) + '/data', obs_init=obs_init, obs_final=obs_final, obj_stuff_data=obj_stuff_data, joint_poses_init=joint_poses_init, joint_poses_final=joint_poses_final, img_arr_init=img_arr_init, img_arr_final=img_arr_final, goal=goal, descriptions=train_des)
@@ -228,13 +228,20 @@ for i in range(101):
             os.makedirs('./src/envs/dataset/test/' + str(count_test) + '/')
 
             # save initial image of an episode
-            env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init) 
-            img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+            env.reset(o=env_stuff_data_init[2], description=None, info_reset=env_stuff_data_init[:2], joint_poses = joint_poses_init)
+            img_arr_init = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
             # save final image of an episode
-            env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final) 
-            img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0, 
+            env.reset(o=env_stuff_data_final[2], description=None, info_reset=env_stuff_data_final[:2], joint_poses = joint_poses_final)
+            img_arr_final = p.getCameraImage(pixels, pixels, viewMatrix, projectionMatrix, flags=p.ER_NO_SEGMENTATION_MASK, shadow=0,
                                     renderer=p.ER_BULLET_HARDWARE_OPENGL)[2][:, :, :3]  # just the rgb
 
             np.savez('./src/envs/dataset/test/' + str(count_test) + '/data', obs_init=obs_init, obs_final=obs_final, obj_stuff_data=obj_stuff_data, joint_poses_init=joint_poses_init, joint_poses_final=joint_poses_final, img_arr_init=img_arr_init, img_arr_final=img_arr_final, goal=goal, descriptions=test_des)
-            
+
+def save_traj(npz_path, acts, obs, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, goal_str, obj_stuff, debugging=False):
+    print(npz_path)
+    if not debugging:
+
+        np.savez(npz_path + '/data', acts=acts, obs=obs, joint_poses=joints, target_poses=targetJoints, acts_rpy=acts_rpy,
+        acts_rpy_rel=acts_rpy_rel, velocities=velocities, gripper_proprioception=gripper_proprioception, goal_str=goal_str, obj_stuff=obj_stuff)
+    print('Finish saving!')

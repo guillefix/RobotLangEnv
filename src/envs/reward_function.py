@@ -488,10 +488,10 @@ def sample_descriptions_from_state(initial_state, current_state, obj_stuff, para
     get_make = params['extract_functions']['get_interactions']['get_make']
     get_paint = params['extract_functions']['get_interactions']['get_paint']
     admissible_actions = params['admissible_actions']
-    
+
 
     assert len(current_state) == len(initial_state)
-    
+
     obj_features_init = obj_stuff[0]       # initial list of dict for {type, color, category=None}
 
     # # extract object attributes
@@ -515,7 +515,7 @@ def sample_descriptions_from_state(initial_state, current_state, obj_stuff, para
                 adj_attributes.append(attributes[att])          # append current object color to adj_attributes
         return adj_attributes, name_attributes
 
-    
+
     descriptions = []
 
     # Add Throw descriptions
@@ -529,35 +529,35 @@ def sample_descriptions_from_state(initial_state, current_state, obj_stuff, para
     # Add Close descriptions
     if 'Close' in admissible_actions:
         descriptions += get_close_descriptions(get_close, initial_state, current_state)
-    
+
     # Add Grasp descriptions
     if 'Grasp' in admissible_actions:
         descriptions += get_grasp_descriptions(get_grasped_ids, current_state, obj_stuff, sort_attributes, obj_features_init)
-    
+
     # Add Move descriptions
     if 'Move' in admissible_actions:
         descriptions += get_move_descriptions(get_moved_ids, initial_state, current_state, obj_stuff, sort_attributes, obj_features_init)
-    
+
     # Add Put descriptions
     if 'Put' in admissible_actions:
         descriptions += get_put_descriptions(get_put_ids_pos, initial_state, current_state, obj_stuff, sort_attributes, obj_features_init)
-    
+
     # Add Hide descriptions
     if 'Hide' in admissible_actions:
         descriptions += get_hide_descriptions(get_hidden_ids, initial_state, current_state, obj_stuff, sort_attributes, obj_features_init)
-    
+
     # Add Turn on descriptions
     if 'Turn on' in admissible_actions:
         descriptions += get_turn_on_descriptions(get_turn_on, initial_state, current_state)
-    
+
     # Add Turn off descriptions
     if 'Turn off' in admissible_actions:
         descriptions += get_turn_off_descriptions(get_turn_off, initial_state, current_state)
-    
+
     # Add Make descriptions
     if 'Make' in admissible_actions:
         descriptions += get_make_descriptions(get_make, initial_state, current_state)
-    
+
     # Add Paint descriptions
     if 'Paint' in admissible_actions:
         paint_descriptions, obj_paint, obj_name, color_init = get_paint_descriptions(get_paint, initial_state, current_state, obj_stuff)
@@ -575,12 +575,12 @@ def sample_descriptions_from_state(initial_state, current_state, obj_stuff, para
             type = obj_name[i][0]
             cat = obj_name[i][1]
             color = color_init[i]
+            remove_type = color + ' ' + type
+            remove_cat = color + ' ' + cat
+            remove_obj = color + ' ' + 'object'
             for des in reversed(descriptions):
                 words = des.split(' ')
                 if words[0] != 'Paint':
-                    remove_type = color + ' ' + type
-                    remove_cat = color + ' ' + cat
-                    remove_obj = color + ' ' + 'object'
                     if (des.find(remove_type) != -1) or (des.find(remove_cat) != -1) or (des.find(remove_obj) != -1):
                         descriptions.remove(des)
 
@@ -626,10 +626,10 @@ def get_reward_from_state(initial_state, current_state, obj_stuff, goal, params)
     get_make = params['extract_functions']['get_interactions']['get_make']
     get_paint = params['extract_functions']['get_interactions']['get_paint']
     admissible_actions = params['admissible_actions']
-    
+
 
     assert len(current_state) == len(initial_state)
-    
+
     obj_features_init = obj_stuff[0]       # initial list of dict for {type, color, category=None}
 
     # # extract object attributes
@@ -671,7 +671,7 @@ def get_reward_from_state(initial_state, current_state, obj_stuff, goal, params)
         close_descr = get_close_descriptions(get_close, initial_state, current_state)
         if goal in close_descr:
             reward = True
-    
+
     if words[0] == 'Grasp':
         grasp_descr = get_grasp_descriptions(get_grasped_ids, current_state, obj_stuff, sort_attributes, obj_features_init)
         if goal in grasp_descr:
@@ -712,8 +712,5 @@ def get_reward_from_state(initial_state, current_state, obj_stuff, goal, params)
         if goal in paint_descr:
             reward = True
 
-    
+
     return reward
-
-
-

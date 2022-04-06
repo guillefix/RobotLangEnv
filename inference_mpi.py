@@ -1,4 +1,4 @@
-from evaluate import evaluate
+from inference import run
 from extra_utils import distribute_tasks
 import os
 import argparse
@@ -35,4 +35,4 @@ else:
     tasks = distribute_tasks(tasks, rank, size)
 
 for task in tasks:
-    evaluate(**task)
+    run(**task)

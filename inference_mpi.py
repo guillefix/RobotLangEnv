@@ -3,8 +3,24 @@ from extra_utils import distribute_tasks
 import os
 import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
-parser.add_argument('--eval_train_demos', action='store_true', help='whether to trained_demos')
+#parser.add_argument('--eval_train_demos', action='store_true', help='whether to trained_demos')
 parser.add_argument('--base_filenames_file', help='file listing demo sequence ids')
+parser.add_argument('--pretrained_name', help='experiment name if evaluating a model')
+parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
+parser.add_argument('--render', action='store_true', help='whether to render the environment')
+parser.add_argument('--goal_str', help='specify goal string (if not specified, we use the one from the demo)')
+parser.add_argument('--zero_seed', action='store_true', help='whether to seed the obs and acts with zeros or with the beginning of the demo')
+parser.add_argument('--random_seed', action='store_true', help='whether to seed the obs and acts with a standard normal distribution')
+parser.add_argument('--using_torchscript', action='store_true', help='whether to use torchscript compiled model or not')
+#parser.add_argument('--session_id', help='the session from which to restore the demo')
+#parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
+parser.add_argument('--experiment_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
+parser.add_argument('--restore_objects', action='store_true', help='whether to restore the objects as they were in the demo')
+parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
+parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
+parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
+parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
+
 args = parser.parse_args()
 
 ## distributing tasks accross nodes ##
@@ -26,13 +42,10 @@ if args.base_filenames is not None:
         filenames = [x[:-1] for x in f.readlines()] # to remove new lines
     #filenames = filenames[:2]
 
-if args.eval_train_demos:
-    tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], "restore_objects": True}, filenames))
-    tasks = distribute_tasks(tasks, rank, size)
-
-else:
-    tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], "restore_objects": False}, filenames))
-    tasks = distribute_tasks(tasks, rank, size)
+#common_args = {"restore_objects": True}
+common_args = vals(args)
+tasks = list(map(lambda x: {"session_id": x.split("_")[1], "rec_id": x.split("_")[5], **common_args}, filenames))
+tasks = distribute_tasks(tasks, rank, size)
 
 for task in tasks:
     run(**task)

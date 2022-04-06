@@ -16,7 +16,8 @@ export ROOT_FOLDER=/gpfswork/rech/imi/usc19dv/captionRLenv/
 export DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/UR5/
 export PROCESSED_DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/UR5_processed/
 export ROOT_DIR_MODEL=/gpfswork/rech/imi/usc19dv/mt-lightning/
+export PRETRAINED_FOLDER=/gpfswork/rech/imi/usc19dv/mt-lightning/training/experiments/
 
 
-srun -n 32 python3 evaluate_mpi.py --eval_train_demos --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames.txt
-
+#srun -n 32 python3 evaluate_mpi.py --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames.txt
+srun -n 32 python3 evaluate_mpi.py --using_model --experiment_name train_transflower_zp5_single_obj_nocol_trim_tw_single_filtered --pretrained_name transflower_zp5_single_obj_nocol_trim_tw_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames.txt

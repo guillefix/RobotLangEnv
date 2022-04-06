@@ -164,9 +164,10 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
 
     #prepare first inputs
     obj_stuff = env.instance.get_stuff_to_save()
-    tokens = get_tokens(goal_str, input_lengths, obj_stuff)
-    prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
-    inputs = make_inputs(tokens, prev_obs, prev_acts)
+    if using_model:
+        tokens = get_tokens(goal_str, input_lengths, obj_stuff)
+        prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
+        inputs = make_inputs(tokens, prev_obs, prev_acts)
     print("obj_stuff")
     print(obj_stuff)
 

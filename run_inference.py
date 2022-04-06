@@ -12,34 +12,12 @@ import pybullet as p
 from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
 from extra_utils.data_utils import get_obs_cont, fix_quaternions, one_hot
-from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
+from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_from_obs, get_new_obs_from_obs
 from src.envs.utils import save_traj
 import uuid
 from src.envs.reward_function import get_reward_from_state, sample_descriptions_from_state
 
-color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
-
-if "ROOT_FOLDER" not in os.environ:
-    root_folder="/home/guillefix/code/inria/captionRLenv/"
-else:
-    root_folder = os.environ["ROOT_FOLDER"]
-
-if "PRETRAINED_FOLDER" not in os.environ:
-    pretrained_folder="/home/guillefix/code/inria/pretrained/"
-else:
-    pretrained_folder = os.environ["PRETRAINED_FOLDER"]
-if "DATA_FOLDER" not in os.environ:
-    data_folder="/home/guillefix/code/inria/UR5/"
-else:
-    data_folder = os.environ["DATA_FOLDER"]
-if "PROCESSED_DATA_FOLDER" not in os.environ:
-    processed_data_folder="/home/guillefix/code/inria/UR5_processed/"
-else:
-    processed_data_folder=os.environ["PROCESSED_DATA_FOLDER"]
-if "ROOT_DIR_MODEL" not in os.environ:
-    root_dir_model = "/home/guillefix/code/multimodal-transflower"
-else:
-    root_dir_model = os.environ["ROOT_DIR_MODEL"]
+from constants import *
 
 '''
 export ROOT_FOLDER=/mnt/tianwei/captionRLenv/
@@ -69,30 +47,6 @@ parser.add_argument('--dynamic_temp', action='store_true', help='whether to use 
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
-#tokenize goal_str
-import json
-word_dict=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
-
-def get_tokens(goal_str, input_lengths, obj_stuff):
-    tokens = []
-    words = goal_str.split(" ")
-    for i in range(11):
-        if i < len(words):
-            word = words[i]
-            tokens.append(word_dict[word])
-        else:
-            tokens.append(66)
-
-    tokens = np.array(tokens)
-    # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")
-    if input_lengths[0] == 10:
-        tokens = np.concatenate([tokens[:1], tokens[2:]])
-    elif input_lengths[0] == 14:
-        obj_types = [word_dict[t] for t in map(lambda x: x["type"], obj_stuff)]
-        obj_types = np.array(obj_types)
-        tokens = np.concatenate([tokens, obj_types])
-        
-    return tokens
 
 def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_sampled_traj=False):
     # LOAD demo
@@ -222,7 +176,7 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
             has_conc_obj, color, object_type = has_concrete_object_ann(goal_str)
             print(color, object_type)
             # assert has_conc_obj
-            # exact_one_object, obj_index = check_if_exact_one_object_obs(obs_cont, disc_cond, color, object_type)
+            # exact_one_object, obj_index = check_if_exact_one_object_from_obs(obs_cont, disc_cond, color, object_type)
             objects = env.instance.objects_added
             matches = 0
             for i, obj in enumerate(objects):
@@ -333,7 +287,7 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
                     if "single" in input_mods[1]:
                         nocol = "nocol" in input_mods[1]
                         noarm = "noarm" in input_mods[1]
-                        new_obs = get_new_obs_obs(new_obs[None], obj_index, nocol=nocol, noarm=noarm)[0]
+                        new_obs = get_new_obs_from_obs(new_obs[None], obj_index, nocol=nocol, noarm=noarm)[0]
 
                 prev_acts2 = np.concatenate([prev_acts2[1:],acts[None]])
                 new_obs, acts = scale_inputs(new_obs[None], acts[None], "noarm" in input_mods[1])

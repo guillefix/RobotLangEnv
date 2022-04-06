@@ -2,6 +2,7 @@ import numpy as np
 import time
 import torch.nn.functional as F
 import pickle
+import json
 from pathlib import Path
 import os
 from src.envs.envList import *
@@ -10,10 +11,11 @@ import pybullet as p
 
 from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
-from extra_utils.data_utils import get_obs_cont, get_obj_types, fix_quaternions, one_hot
+from extra_utils.data_utils import get_obs_cont, fix_quaternions, one_hot
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
-from src.utils import save_traj
+from src.envs.utils import save_traj
 import uuid
+from src.envs.reward_function import get_reward_from_state, sample_descriptions_from_state
 
 color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
 
@@ -67,29 +69,41 @@ parser.add_argument('--dynamic_temp', action='store_true', help='whether to use 
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
-def evaluate(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False):
+#tokenize goal_str
+import json
+word_dict=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
+
+def get_tokens(goal_str, input_lengths, obj_stuff):
+    tokens = []
+    words = goal_str.split(" ")
+    for i in range(11):
+        if i < len(words):
+            word = words[i]
+            tokens.append(word_dict[word])
+        else:
+            tokens.append(66)
+
+    tokens = np.array(tokens)
+    # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")
+    if input_lengths[0] == 10:
+        tokens = np.concatenate([tokens[:1], tokens[2:]])
+    elif input_lengths[0] == 14:
+        obj_types = [word_dict[t] for t in map(lambda x: x["type"], obj_stuff)]
+        obj_types = np.array(obj_types)
+        tokens = np.concatenate([tokens, obj_types])
+        
+    return tokens
+
+def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_sampled_traj=False):
     # LOAD demo
     traj_data = np.load(data_folder+session_id+"/obs_act_etc/"+rec_id+"/data.npz", allow_pickle=True)
     if goal_str is None:
         goal_str = str(traj_data['goal_str'][0])
     print(goal_str)
 
-    #tokenize goal_str
-    import json
-    d=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
 
     if using_model:
 
-        tokens = []
-        words = goal_str.split(" ")
-        for i in range(11):
-            if i < len(words):
-                word = words[i]
-                tokens.append(d[word])
-            else:
-                tokens.append(66)
-
-        tokens = np.array(tokens)
 
         import torch
 
@@ -123,12 +137,6 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
         acts_traj_unscaled = acts_scaler.inverse_transform(acts_traj)
 
 
-        # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")
-        if input_lengths[0] == 10:
-            tokens = np.concatenate([tokens[:1], tokens[2:]])
-        elif input_lengths[0] == 14:
-            obj_types = get_obj_types(obs_traj)
-            tokens = np.concatenate([tokens, obj_types])
 
         if zero_seed:
             prev_obs = obs_scaler.inverse_transform(np.zeros((context_size_obs,18)))
@@ -159,8 +167,6 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
             return [tokens, torch.from_numpy(prev_obs).unsqueeze(1).float().cuda(), torch.from_numpy(prev_acts).unsqueeze(1).float().cuda()]
             # return [torch.from_numpy(tokens).unsqueeze(1).unsqueeze(1).cpu(), torch.from_numpy(prev_obs).unsqueeze(1).float().cpu(), torch.from_numpy(prev_acts).unsqueeze(1).float().cpu()]
 
-        prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
-        inputs = make_inputs(tokens, prev_obs, prev_acts)
         if using_torchscript:
             out = model(inputs)
             out = model(inputs)
@@ -202,6 +208,14 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
     objects = traj_data['obj_stuff'][0] if restore_objects else None
     env.reset(o=traj_data["obs"][0], info_reset=None, description=goal_str, joint_poses=traj_data["joint_poses"][0], objects=objects, restore_objs=restore_objects)
 
+    #prepare first inputs
+    obj_stuff = env.instance.get_stuff_to_save()
+    tokens = get_tokens(goal_str, input_lengths, obj_stuff)
+    prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
+    inputs = make_inputs(tokens, prev_obs, prev_acts)
+    print("obj_stuff")
+    print(obj_stuff)
+
     if using_model:
         obj_index = -1
         if input_mods[1] in ["obs_cont_single_nocol_noarm_trim_scaled", "obs_cont_single_nocol_noarm_scaled"]:
@@ -215,9 +229,9 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
                 if obj['type'] == object_type and obj['color'] == color:
                     matches += 1
                     obj_index = i
+        print("obj_index", obj_index)
             # assert exact_one_object
 
-    from src.envs.reward_function import get_reward_from_state
 
     # print([o for o in env.instance.objects])
     if joint_control:
@@ -235,6 +249,7 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
         acts_rpy = []
         acts_rpy_rel = []
         velocities = []
+        targetJoints = []
         gripper_proprioception = []
         if using_model:
             scaled_obss = None
@@ -272,10 +287,12 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
             action = act_pos + acts_euler + act_gripper
             # print(action)
             if save_sampled_traj:
-                state = env.instance.calc_actor_state()
+                # state = env.instance.calc_actor_state()
+                state = env.instance.calc_state()
+                # print(state)
                 rel_xyz = np.array(act_pos)-np.array(state['observation'][0:3])
                 rel_rpy = np.array(acts_euler) - np.array(p.getEulerFromQuaternion(state['observation'][3:7]))
-                action_rpy_rel = np.array(list(rel_xyz)+list(rel_rpy)+[GRIPPER])
+                action_rpy_rel = np.array(list(rel_xyz)+list(rel_rpy)+act_gripper)
                 actss.append(acts)
                 obss.append(state['observation'])
                 joints.append(state['joints'])
@@ -286,9 +303,9 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
             obs, r, done, info = env.step(np.array(action))
             if save_sampled_traj:
                 targetJoints.append(info["target_poses"])
-            if using_model:
-                print(obs[8+35*obj_index:11+35*obj_index])
-                print(obs[113])
+            # if using_model:
+            #     print(obs[8+35*obj_index:11+35*obj_index])
+            #     print(obs[113])
 
             # obs[8:11] = [-0.3,0,max_size/2]
             # obs[8:11] = [-0.6,0,0.08]
@@ -300,7 +317,7 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
                 initial_state = obs
             else:
                 current_state = obs
-                success = get_reward_from_state(initial_state, current_state, traj_data['obj_stuff'], goal_str, env.instance.env_params)
+                success = get_reward_from_state(initial_state, current_state, obj_stuff, goal_str, env.instance.env_params)
                 print(goal_str+": ",success)
                 achieved_goal_end = success
                 if success:
@@ -317,43 +334,52 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
                         nocol = "nocol" in input_mods[1]
                         noarm = "noarm" in input_mods[1]
                         new_obs = get_new_obs_obs(new_obs[None], obj_index, nocol=nocol, noarm=noarm)[0]
-                prev_obs = np.concatenate([prev_obs[1:],new_obs[None]])
-                # print(new_obs)
-                prev_acts = np.concatenate([prev_acts[1:],acts[None]])
+
                 prev_acts2 = np.concatenate([prev_acts2[1:],acts[None]])
-                prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
+                new_obs, acts = scale_inputs(new_obs[None], acts[None], "noarm" in input_mods[1])
+                prev_obs = np.concatenate([prev_obs[1:],new_obs])
+                # print(new_obs)
+                prev_acts = np.concatenate([prev_acts[1:],acts])
                 inputs = make_inputs(tokens, prev_obs, prev_acts)
 
             if save_sampled_traj and using_model:
                 if scaled_obss is None:
-                    scaled_obss = prev_obs[-2:-1]
+                    scaled_obss = new_obs
                 else:
-                    scaled_obss = np.concatenate([scaled_obss, prev_obs[-2:-1]])
+                    scaled_obss = np.concatenate([scaled_obss, new_obs])
                 if scaled_actss is None:
-                    scaled_actss = scaled_acts
+                    scaled_actss = acts
                 else:
-                    scaled_actss = np.concatenate([scaled_actss, scaled_acts])
+                    scaled_actss = np.concatenate([scaled_actss, acts])
 
 
     if save_sampled_traj:
-        train_decriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, traj_data['obj_stuff'], env.instance.env_params)
+        train_descriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, obj_stuff, env.instance.env_params)
         descriptions = train_descriptions + test_descriptions
-        new_session_id = experiment_name
-        new_rec_id = str(uuid.uuid4())
-        if not Path(root_folder+"generated_data").is_dir():
-            os.mkdir(root_folder+"generated_data")
-        if not Path(root_folder+"generated_data/"+new_session_id).is_dir():
-            os.mkdir(root_folder+"generated_data/"+new_session_id)
-        if not Path(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
-            os.mkdir(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id)
-        npz_path = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/data"
-        save_traj(npz_path, acts, obs, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, [goal_str], obj_stuff)
-        if using_model:
-            if not Path(root_folder+"generated_data_processed").is_dir():
-                os.mkdir(root_folder+"generated_data_processed")
-            np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokens)
-            np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], obss)
-            np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], actss)
+        print(descriptions)
+        if len(descriptions)>0:
+            description = descriptions[0]
+            new_session_id = experiment_name
+            new_rec_id = str(uuid.uuid4())
+            if not Path(root_folder+"generated_data").is_dir():
+                os.mkdir(root_folder+"generated_data")
+            if not Path(root_folder+"generated_data/"+new_session_id).is_dir():
+                os.mkdir(root_folder+"generated_data/"+new_session_id)
+            if not Path(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
+                os.mkdir(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id)
+            npz_path = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id
+            save_traj(npz_path, acts, obs, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, [description], obj_stuff)
+            args_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
+            json_string = json.dumps(args)
+            with open(args_file, "w") as f:
+                f.write(json_string)
+            if using_model:
+                new_tokens = get_tokens(goal_str, input_lengths, obj_stuff)
+                if not Path(root_folder+"generated_data_processed").is_dir():
+                    os.mkdir(root_folder+"generated_data_processed")
+                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokens)
+                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], obss)
+                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], actss)
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():
             os.mkdir(root_folder+"results")
@@ -392,4 +418,4 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())
-    evaluate(**args)
+    run(**args)

@@ -1,4 +1,4 @@
-from inference import run
+from run_inference import run
 from extra_utils import distribute_tasks
 import os
 import argparse

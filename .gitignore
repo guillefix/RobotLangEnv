@@ -120,3 +120,4 @@ src/data/*
 src/results/*
 results/*
 *.out
+generated_data/*

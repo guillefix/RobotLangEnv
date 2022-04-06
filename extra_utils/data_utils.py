@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
 color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
 from src.envs.color_generation import infer_color
@@ -15,6 +16,21 @@ def get_obs_cont(obs):
     obs_cont = np.concatenate([obs[:14], obs_color1, obs[40:49], obs_color2, obs[75:84], obs_color3, obs[110:]])
     return obs_cont
 
+if "ROOT_FOLDER" not in os.environ:
+    root_folder="/home/guillefix/code/inria/captionRLenv/"
+else:
+    root_folder = os.environ["ROOT_FOLDER"]
+if "PROCESSED_DATA_FOLDER" not in os.environ:
+    processed_data_folder="/home/guillefix/code/inria/UR5_processed/"
+else:
+    processed_data_folder=os.environ["PROCESSED_DATA_FOLDER"]
+
+import pickle
+object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
+# object_types
+
+import json
+vocab=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
 
 def get_obj_types(obss):
     obss_disc1 = np.argmax(obss[:,14:37], axis=1)

@@ -38,21 +38,21 @@ class Color:
         """
         self.color = color
         if color == 'blue':
-            self.space = Box(low=np.array([0, 0, max_min]), high=np.array([min_max, min_max, 1]))
+            self.space = Box(low=np.array([0, 0, max_min]).astype(np.float32), high=np.array([min_max, min_max, 1]).astype(np.float32), dtype=np.float32)
         elif color == 'red':
-            self.space = Box(low=np.array([max_min, 0, 0]), high=np.array([1, min_max, min_max]))
+            self.space = Box(low=np.array([max_min, 0, 0]).astype(np.float32), high=np.array([1, min_max, min_max]).astype(np.float32), dtype=np.float32)
         elif color == 'green':
-            self.space = Box(low=np.array([0, max_min, 0]), high=np.array([min_max, 1, min_max]))
+            self.space = Box(low=np.array([0, max_min, 0]).astype(np.float32), high=np.array([min_max, 1, min_max]).astype(np.float32), dtype=np.float32)
         elif color == 'cyan':
-            self.space = Box(low=np.array([0, max_min, max_min]), high=np.array([min_max, 1, 1]))
+            self.space = Box(low=np.array([0, max_min, max_min]).astype(np.float32), high=np.array([min_max, 1, 1]).astype(np.float32), dtype=np.float32)
         elif color == 'yellow':
-            self.space = Box(low=np.array([max_min, max_min, 0]), high=np.array([1, 1, min_max]))
+            self.space = Box(low=np.array([max_min, max_min, 0]).astype(np.float32), high=np.array([1, 1, min_max]).astype(np.float32), dtype=np.float32)
         elif color == 'magenta':
-            self.space = Box(low=np.array([max_min, 0, max_min]), high=np.array([1, min_max, 1]))
+            self.space = Box(low=np.array([max_min, 0, max_min]).astype(np.float32), high=np.array([1, min_max, 1]).astype(np.float32), dtype=np.float32)
         elif color == 'black':
-            self.space = Box(low=np.array([0, 0, 0]), high=np.array([min_max, min_max, min_max]))
+            self.space = Box(low=np.array([0, 0, 0]).astype(np.float32), high=np.array([min_max, min_max, min_max]).astype(np.float32), dtype=np.float32)
         elif color == 'white':
-            self.space = Box(low=np.array([max_min, max_min, max_min]), high=np.array([1, 1, 1]))
+            self.space = Box(low=np.array([max_min, max_min, max_min]).astype(np.float32), high=np.array([1, 1, 1]).astype(np.float32), dtype=np.float32)
         else:
             raise NotImplementedError("color is 'red', 'blue' or 'green'")
 

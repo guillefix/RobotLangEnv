@@ -234,7 +234,7 @@ def get_env_params(max_nb_objects=3,
                     obj_pos[i] = 'on the right side of the table'
                 elif (-0.6 <= pos[0] <= 0.6) and (0.32 <= pos[1] < 0.6) and ( 0.22 < pos[2] < 0.32):
                     obj_pos[i] = 'on the shelf'
-                elif (door_pos-0.17 < pos[0] < door_pos+0.17) and (0.32 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22):
+                elif (door_pos-0.3 < pos[0] < door_pos+0.3) and (0.32 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22):
                     obj_pos[i] = 'behind the door'
                 elif (-0.17 <= pos[0] <= 0.17) and (drawer_pos - 0.1 < pos[1] < drawer_pos + 0.14) and (-0.17 <= pos[2] < -0.04):
                     obj_pos[i] = 'in the drawer'

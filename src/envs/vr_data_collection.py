@@ -30,7 +30,7 @@ from PIL import Image
 from src.envs.envList import *
 from src.envs.env_params import get_env_params
 from src.envs.descriptions import generate_all_descriptions
-from src.utils import save_traj
+from src.envs.utils import save_traj
 
 p.connect(p.SHARED_MEMORY)
 

@@ -55,14 +55,15 @@ parser.add_argument('--random_seed', action='store_true', help='whether to seed 
 parser.add_argument('--using_torchscript', action='store_true', help='whether to use torchscript compiled model or not')
 parser.add_argument('--session_id', help='the session from which to restore the demo')
 parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
-parser.add_argument('--experiment_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
+parser.add_argument('--pretrained_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
+parser.add_argument('--experiment_name', default="default", help='experiment name to save results')
 parser.add_argument('--restore_objects', action='store_true', help='whether to restore the objects as they were in the demo')
 parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
-def evaluate(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False):
+def evaluate(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False):
     # LOAD demo
     traj_data = np.load(data_folder+session_id+"/obs_act_etc/"+rec_id+"/data.npz", allow_pickle=True)
     if goal_str is None:
@@ -288,8 +289,10 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
 
     if not Path(root_folder+"results").is_dir():
         os.mkdir(root_folder+"results")
+    if not Path(root_folder+"results/"+experiment_name).is_dir():
+        os.mkdir(root_folder+"results/"+experiment_name)
     if using_model:
-        filename = root_folder+"results/eval_"+experiment_name+"_"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
+        filename = root_folder+"results/"+experiment_name+"/eval_"+experiment_name+"_"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
         if os.path.exists(filename):
             with open(filename, "a") as f:
                 f.write(str(achieved_goal_end)+","+str(i)+"\n")
@@ -298,20 +301,18 @@ def evaluate(using_model=False, render=False, goal_str=None, session_id=None, re
                 f.write("achieved_goal_end,num_steps"+"\n")
                 f.write(str(achieved_goal_end)+","+str(i)+"\n")
     else:
-        if not Path(root_folder+"results/eval_demos").is_dir():
-            os.mkdir(root_folder+"results/eval_demos")
-        filename = root_folder+"results/eval_demos/"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
+        filename = root_folder+"results/"+experiment_name+"/"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
         if achieved_goal_anytime:
-            with open(root_folder+"results/eval_demos/achieved_goal_anytime.txt", "a") as f:
+            with open(root_folder+"results/"+experiment_name+"/achieved_goal_anytime.txt", "a") as f:
                 f.write("UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"+","+goal_str+"\n")
         if achieved_goal_end:
-            with open(root_folder+"results/eval_demos/achieved_goal_end.txt", "a") as f:
+            with open(root_folder+"results/"+experiment_name+"/achieved_goal_end.txt", "a") as f:
                 f.write("UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"+","+goal_str+"\n")
         if not achieved_goal_anytime:
-            with open(root_folder+"results/eval_demos/not_achieved_goal_anytime.txt", "a") as f:
+            with open(root_folder+"results/"+experiment_name+"/not_achieved_goal_anytime.txt", "a") as f:
                 f.write("UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"+","+goal_str+"\n")
         if not achieved_goal_end:
-            with open(root_folder+"results/eval_demos/not_achieved_goal_end.txt", "a") as f:
+            with open(root_folder+"results/"+experiment_name+"/not_achieved_goal_end.txt", "a") as f:
                 f.write("UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"+","+goal_str+"\n")
         if os.path.exists(filename):
             with open(filename, "a") as f:

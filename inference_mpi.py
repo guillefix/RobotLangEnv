@@ -18,6 +18,7 @@ parser.add_argument('--session_id', help='the session from which to restore the 
 parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
 parser.add_argument('--pretrained_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
 parser.add_argument('--experiment_name', default="default", help='experiment name to save results')
+parser.add_argument('--varying_args', default="session_id,rec_id", help='comma-separated list of arguments that vary in the experiment')
 parser.add_argument('--restore_objects', action='store_true', help='whether to restore the objects as they were in the demo')
 parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
@@ -51,7 +52,7 @@ del common_args["base_filenames_file"]
 del common_args["num_repeats"]
 tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
 tasks = distribute_tasks(tasks, rank, size)
-print(tasks)
+#print(tasks)
 
 for task in tasks:
     run(**task)

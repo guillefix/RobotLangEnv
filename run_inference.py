@@ -7,11 +7,12 @@ from pathlib import Path
 import os
 from src.envs.envList import *
 import numpy as np
+import torch
 import pybullet as p
 
 from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
-from extra_utils.data_utils import get_obs_cont, fix_quaternions, one_hot
+from extra_utils.data_utils import get_obs_cont, fix_quaternions, one_hot, get_tokens
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_from_obs, get_new_obs_from_obs
 from src.envs.utils import save_traj
 import uuid
@@ -41,14 +42,24 @@ parser.add_argument('--session_id', help='the session from which to restore the 
 parser.add_argument('--rec_id', help='the recording from within the session to retrieve as demo')
 parser.add_argument('--pretrained_name', default=None, help='experiment name to retrieve the model from (if evaling a model)')
 parser.add_argument('--experiment_name', default="default", help='experiment name to save results')
+parser.add_argument('--varying_args', default="session_id,rec_id", help='comma-separated list of arguments that vary in the experiment')
 parser.add_argument('--restore_objects', action='store_true', help='whether to restore the objects as they were in the demo')
 parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
+if torch.cuda.is_available():
+    print("CUDA available")
+    device = 'gpu:'+str(torch.cuda.current_device())
+else:
+    print("CUDA not available")
+    device = 'cpu'
 
-def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_sampled_traj=False):
+
+def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_sampled_traj=False, varying_args="session_id,rec_id"):
+    varying_args = varying_args.split(",")
+    args = locals()
     # LOAD demo
     traj_data = np.load(data_folder+session_id+"/obs_act_etc/"+rec_id+"/data.npz", allow_pickle=True)
     if goal_str is None:
@@ -65,13 +76,15 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
         sys.path.append(root_dir_model)
         from inference.generate import load_model_from_logs_path
 
-        default_save_path = pretrained_folder+experiment_name
+        default_save_path = pretrained_folder+pretrained_name
         logs_path = default_save_path
         #load model:
         model, opt = load_model_from_logs_path(logs_path)
         if using_torchscript:
             print("Using torchscript")
             model = torch.jit.load(model_folder+'compiled_jit.pth')
+        else:
+            model = model.to(device)
 
         input_dims = [int(x) for x in opt.dins.split(",")]
         input_lengths = [int(x) for x in opt.input_lengths.split(",")]
@@ -116,9 +129,9 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
             # return [torch.from_numpy(tokens.copy()).unsqueeze(1).unsqueeze(1).cuda(), torch.from_numpy(prev_obs.copy()).unsqueeze(1).float().cuda(), torch.from_numpy(prev_acts.copy()).unsqueeze(1).float().cuda()]
             tokens = torch.from_numpy(tokens)
             # tokens = F.one_hot(tokens,num_classes=67)
-            tokens = tokens.unsqueeze(1).unsqueeze(1).long().cuda()
+            tokens = tokens.unsqueeze(1).unsqueeze(1).long().to(device)
             # tokens = tokens.unsqueeze(1).cuda()
-            return [tokens, torch.from_numpy(prev_obs).unsqueeze(1).float().cuda(), torch.from_numpy(prev_acts).unsqueeze(1).float().cuda()]
+            return [tokens, torch.from_numpy(prev_obs).unsqueeze(1).float().to(device), torch.from_numpy(prev_acts).unsqueeze(1).float().to(device)]
             # return [torch.from_numpy(tokens).unsqueeze(1).unsqueeze(1).cpu(), torch.from_numpy(prev_obs).unsqueeze(1).float().cpu(), torch.from_numpy(prev_acts).unsqueeze(1).float().cpu()]
 
         if using_torchscript:
@@ -210,6 +223,7 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
             scaled_obss = None
             scaled_actss = None
     for i in range(max_number_steps):
+        print(i)
 
         if joint_control:
             poses  = []
@@ -313,7 +327,7 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
         descriptions = train_descriptions + test_descriptions
         print(descriptions)
         if len(descriptions)>0:
-            description = descriptions[0]
+            description = descriptions[-1]
             new_session_id = experiment_name
             new_rec_id = str(uuid.uuid4())
             if not Path(root_folder+"generated_data").is_dir():
@@ -328,6 +342,9 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
             json_string = json.dumps(args)
             with open(args_file, "w") as f:
                 f.write(json_string)
+            descriptions_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
+            with open(descriptions_file, "w") as f:
+                f.write(",".join(descriptions))
             if using_model:
                 new_tokens = get_tokens(goal_str, input_lengths, obj_stuff)
                 if not Path(root_folder+"generated_data_processed").is_dir():
@@ -335,13 +352,25 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
                 np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokens)
                 np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], obss)
                 np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], actss)
+
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():
             os.mkdir(root_folder+"results")
         if not Path(root_folder+"results/"+experiment_name).is_dir():
             os.mkdir(root_folder+"results/"+experiment_name)
         if using_model:
-            filename = root_folder+"results/"+experiment_name+"/eval_"+experiment_name+"_"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
+            filename = root_folder+"results/"+experiment_name+"/eval_"
+            for k in varying_args:
+                filename += str(args[k])+"_"
+            filename += "_".join(goal_str.split(" "))+".txt"
+            metadata_filename = root_folder+"results/"+experiment_name+"/metadata.txt"
+            if not os.path.exists(metadata_filename):
+                args_reduced = args.copy()
+                for k in varying_args:
+                    del args_reduced[k]
+                json_string = json.dumps(args_reduced)
+                with open(metadata_filename, "w") as f:
+                    f.write(json_string)
             if os.path.exists(filename):
                 with open(filename, "a") as f:
                     f.write(str(achieved_goal_end)+","+str(i)+"\n")

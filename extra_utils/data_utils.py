@@ -1,6 +1,5 @@
 import numpy as np
 import os
-from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
 from src.envs.color_generation import infer_color
 from constants import *
 
@@ -10,7 +9,7 @@ object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
 vocab_default=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
 
 def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
-    if vocab=None:
+    if vocab==None:
         vocab = vocab_default
     tokens = []
     words = goal_str.split(" ")
@@ -33,7 +32,7 @@ def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
     return tokens
 
 def get_obj_types(obss, vocab=None):
-    if vocab=None:
+    if vocab==None:
         vocab = vocab_default
     obss_disc1 = np.argmax(obss[:,14:37], axis=1)
     obss_disc2 = np.argmax(obss[:,49:72], axis=1)
@@ -80,7 +79,7 @@ def get_obs_cont_single(obs):
 
 
 def get_obs_cont(obss):
-    if len(obbs.shape) == 2:
+    if len(obss.shape) == 1:
         return get_obs_cont_single(obss)
     obss_color1 = obss[:,37:40]
     obss_color2 = obss[:,72:75]

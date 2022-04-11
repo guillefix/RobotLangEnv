@@ -228,7 +228,12 @@ def run(using_model=False, render=False, goal_str=None, session_id=None, rec_id=
                         temp = np.max([temp*dynamic_temp_delta +(1-dynamic_temp_delta)*10*np.tanh(0.01/variance), 0.5])
                     else:
                         temp = temp
-                    scaled_acts = model(inputs, temp=temp)[0][0][0].cpu()
+                    start_time = time.time()
+                    scaled_acts, _, logPs = model(inputs, temp=temp)
+                    print("--- %s seconds ---" % (time.time() - start_time))
+                    scaled_acts = scaled_acts[0][0].cpu()
+                    logP = logPs[0].cpu()
+                    print(logP)
                 acts = acts_scaler.inverse_transform(scaled_acts)
                 acts = acts[0]
             else:

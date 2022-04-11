@@ -10,7 +10,7 @@ object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
 vocab_default=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
 
 def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
-    if vocab=None:
+    if vocab==None:
         vocab = vocab_default
     tokens = []
     words = goal_str.split(" ")
@@ -33,7 +33,7 @@ def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
     return tokens
 
 def get_obj_types(obss, vocab=None):
-    if vocab=None:
+    if vocab==None:
         vocab = vocab_default
     obss_disc1 = np.argmax(obss[:,14:37], axis=1)
     obss_disc2 = np.argmax(obss[:,49:72], axis=1)

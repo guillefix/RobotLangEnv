@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from constants import *
+import pickle
 
 import json
 object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))

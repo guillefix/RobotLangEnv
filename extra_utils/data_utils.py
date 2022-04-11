@@ -1,6 +1,5 @@
 import numpy as np
 import os
-from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_obs, get_new_obs_obs
 from src.envs.color_generation import infer_color
 from constants import *
 
@@ -80,7 +79,7 @@ def get_obs_cont_single(obs):
 
 
 def get_obs_cont(obss):
-    if len(obbs.shape) == 2:
+    if len(obss.shape) == 1:
         return get_obs_cont_single(obss)
     obss_color1 = obss[:,37:40]
     obss_color2 = obss[:,72:75]

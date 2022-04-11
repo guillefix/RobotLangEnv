@@ -1,6 +1,6 @@
 #!/bin/bash
 ##SBATCH --job-name=eval_demos_tw
-#SBATCH --job-name=eval_model_tw_gen
+#SBATCH --job-name=eval_model_tw
 #SBATCH -A imi@cpu
 ##SBATCH --qos=qos_gpu-dev
 ##SBATCH --partition=gpu_p2
@@ -27,4 +27,4 @@ export PRETRAINED_FOLDER=/gpfswork/rech/imi/usc19dv/mt-lightning/training/experi
 
 
 #srun -n 32 python3 inference_mpi.py --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames.txt --save_eval_results
-srun -n 320 python3 inference_mpi.py --using_model --experiment_name train_transflower_zp5_single_obj_nocol_trim_tw_single_filtered_norestore_objs --pretrained_name transflower_zp5_single_obj_nocol_trim_tw_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_sampled_traj --num_repeats 20
+srun -n 320 python3 inference_mpi.py --using_model --experiment_name train_transflower_zp5_single_obj_nocol_trim_tw_single_filtered_restore_objs --pretrained_name transflower_zp5_single_obj_nocol_trim_tw_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_sampled_traj --num_repeats 20 --restore_objects

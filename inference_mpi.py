@@ -7,7 +7,7 @@ parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment
 parser.add_argument('--base_filenames_file', help='file listing demo sequence ids')
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
-parser.add_argument('--compute_loss loss of a recorded trajectory')
+parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
 parser.add_argument('--save_sampled_traj', action='store_true', help='whether to save the sampled trajectory (really only makes sense if using_model)')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')

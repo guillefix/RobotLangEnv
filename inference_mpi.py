@@ -34,6 +34,8 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 print(rank)
 
+#TODO: add task where we sample a random instruction
+
 tasks = []
 
 if "DATA_FOLDER" not in os.environ:

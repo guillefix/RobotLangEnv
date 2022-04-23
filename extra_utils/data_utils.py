@@ -29,7 +29,7 @@ def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
         obj_types = np.array(obj_types)
         tokens = np.concatenate([tokens, obj_types])
 
-    return tokens
+    return np.expand_dims(tokens,1)
 
 def get_obj_types(obss, vocab=None):
     if vocab==None:
@@ -62,6 +62,8 @@ def get_obj_types(obss, vocab=None):
 
 def get_ann_with_obj_types(ann, obss):
     obj_types = get_obj_types(obss)
+    # print(ann.shape)
+    # print(obj_types.shape)
     disc_cond = np.concatenate([ann, obj_types])
     return disc_cond
 
@@ -92,7 +94,7 @@ def get_obs_cont(obss):
     obss_disc2 = np.argmax(obss[:,49:72], axis=1)
     obss_disc3 = np.argmax(obss[:,84:107], axis=1)
     obss_cont = np.concatenate([obss[:,:14], obss_color1, obss[:,40:49], obss_color2, obss[:,75:84], obss_color3, obss[:,110:]],axis=1)
-    return obs_cont
+    return obss_cont
 
 def fix_quaternions(rot_stream):
     prev_rot = None

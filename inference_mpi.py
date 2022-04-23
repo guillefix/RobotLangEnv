@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment
 parser.add_argument('--base_filenames_file', help='file listing demo sequence ids')
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
+parser.add_argument('--compute_loss loss of a recorded trajectory')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
 parser.add_argument('--save_sampled_traj', action='store_true', help='whether to save the sampled trajectory (really only makes sense if using_model)')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')
@@ -23,6 +24,7 @@ parser.add_argument('--restore_objects', action='store_true', help='whether to r
 parser.add_argument('--temp', type=float, default=1.0, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--dynamic_temp', action='store_true', help='whether to use the dynamic temperature trick to encourage exploration')
 parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the decay/smoothing parameter in the dynamic temp trick algorithm')
+parser.add_argument('--save_chunk_size', type=int, default=120, help='the number of frames previous to achievement of a goal to consider part of the episode saved for that goal')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 
 args = parser.parse_args()

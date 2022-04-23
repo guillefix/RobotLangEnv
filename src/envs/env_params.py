@@ -4,7 +4,8 @@ import numpy as np
 from src.envs.color_generation import *
 
 def get_env_params(max_nb_objects=3,
-                   admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
+                   # admissible_actions=('Open', 'Close', 'Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
+                   admissible_actions=('Grasp', 'Put', 'Hide', 'Turn on', 'Turn off', 'Make', 'Paint', 'Move', 'Throw'),
                    admissible_attributes=('colors', 'categories', 'types'),
                    min_max_sizes=(0.1, 0.15),
                    agent_size=0.05,
@@ -203,10 +204,10 @@ def get_env_params(max_nb_objects=3,
 
     def get_grasped_ids(current_state):
         obj_grasped = []
-        if current_state[7] > 0.03:
-            for i in range(3):
-                if current_state[10 + i * 35] > 0.08:
-                    obj_grasped.append(i)
+        # if current_state[7] > 0.03:
+        for i in range(3):
+            if np.linalg.norm(np.array(current_state[:3]) - np.array(current_state[8+i*35:11+i*35]))<0.05 and current_state[10 + i * 35] > 0.08:
+                obj_grasped.append(i)
         return obj_grasped
 
     def get_moved_ids(initial_state, current_state):
@@ -226,28 +227,31 @@ def get_env_params(max_nb_objects=3,
             size = current_state[i*35+8+32:i*35+8+35]
             vertical_size = np.max(size)
             init_pos = initial_state[8 + i * 35:11 + i * 35]
-            if (abs(pos[0] - init_pos[0]) > 0.0001) or (abs(pos[1] - init_pos[1]) > 0.0001):
-                obj_put.append(i)
-                if (-0.6 <= pos[0] < 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
-                    obj_pos[i] = 'on the left side of the table'
-                elif (0.6 >= pos[0] > 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
-                    obj_pos[i] = 'on the right side of the table'
-                elif (-0.6 <= pos[0] <= 0.6) and (0.32 <= pos[1] < 0.6) and ( 0.22 < pos[2] < 0.32):
-                    obj_pos[i] = 'on the shelf'
-                elif (door_pos-0.3 < pos[0] < door_pos+0.3) and (0.32 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22):
-                    obj_pos[i] = 'behind the door'
-                elif (-0.17 <= pos[0] <= 0.17) and (drawer_pos - 0.1 < pos[1] < drawer_pos + 0.14) and (-0.17 <= pos[2] < -0.04):
-                    obj_pos[i] = 'in the drawer'
-                else:
-                    obj_put.remove(i)
+            # if (abs(pos[0] - init_pos[0]) > 0.0001) or (abs(pos[1] - init_pos[1]) > 0.0001):
+            obj_put.append(i)
+            if (-0.6 <= pos[0] < 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
+                obj_pos[i] = 'on the left side of the table'
+            elif (0.6 >= pos[0] > 0) and (0 <= pos[1] <= 0.32) and (-0.04 <= pos[2] <= vertical_size/2):
+                obj_pos[i] = 'on the right side of the table'
+            elif (-0.6 <= pos[0] <= 0.6) and (0.32 <= pos[1] < 0.6) and ( 0.22 < pos[2] < 0.32):
+                obj_pos[i] = 'on the shelf'
+            elif (door_pos-0.3 < pos[0] < door_pos+0.3) and (0.34 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22):
+                obj_pos[i] = 'behind the door'
+            elif (-0.17 <= pos[0] <= 0.17) and (drawer_pos - 0.1 < pos[1] < drawer_pos + 0.14) and (-0.17 <= pos[2] < -0.04):
+                obj_pos[i] = 'in the drawer'
+            else:
+                obj_put.remove(i)
         return obj_put, obj_pos
 
     def get_hidden_ids(current_state):
         obj_hidden = []
+        door_pos = current_state[113]
+        drawer_pos = current_state[114]
         for i in range(3):
-            if (current_state[9 + i * 35] > 0.32) and (-0.04 <= current_state[10 + i * 35] <= 0.24) and (current_state[113] > 0.22):
+            pos = current_state[8 + i * 35:11 + i * 35]
+            if (door_pos-0.3 < pos[0] < door_pos+0.3) and (0.34 <= pos[1] < 0.6) and (-0.04 <= pos[2] <= 0.22) and door_pos>0.22:
                 obj_hidden.append(i)
-            elif (-0.17 <= current_state[10 + i * 35] < -0.04) and (current_state[114] > 0.06):
+            elif (-0.17 <= pos[0] <= 0.17) and (drawer_pos - 0.1 < pos[1] < drawer_pos + 0.14) and (-0.17 <= pos[2] < -0.04) and drawer_pos>0.06:
                 obj_hidden.append(i)
         return obj_hidden
 

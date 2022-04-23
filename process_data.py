@@ -36,7 +36,9 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 print(rank)
-tasks = list(os.walk(data_folder))
+dirs = data_folder.split("/")
+os.chdir(data_folder+"..")
+tasks = list(os.walk(dirs[-2]))
 tasks = distribute_tasks(tasks, rank, size)
 
 if not os.path.isdir(processed_data_folder):
@@ -46,5 +48,5 @@ for dirpath, dirs, files in tasks:
         fname = os.path.join(dirpath,filename)
         if fname.endswith('.npz'):
             print(fname)
-            # process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
-            process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
+            process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
+            # process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)

@@ -56,14 +56,14 @@ def process_file(filePath, save_folder, mods=["obs", "acts"], smoothing=0):
                 obs_cont = get_obs_cont(obs)
                 np.save(save_folder+"/"+seq_id+".obs_cont", obs_cont)
             if mod == "disc_cond":
-                for ann in a['goal_str']:
+                for ii,ann in enumerate(a['goal_str']):
                     tokens = get_tokens(ann)[:,0]
-                    disc_cond = get_ann_with_obj_types(tokens, obs)[None]
-                    if i == 0:
+                    disc_cond = np.expand_dims(get_ann_with_obj_types(tokens, obs),1)[None]
+                    if ii == 0:
                         disc_conds = disc_cond
                     else:
                         disc_conds = np.concatenate([disc_conds,disc_cond])
-                np.save(save_folder+"/"+seq_id+".disc_cond", disc_cond)
+                np.save(save_folder+"/"+seq_id+".disc_cond", disc_conds)
     else:
         print("ZERO-LENGTH SEQUENCE: "+filePath)
 
@@ -95,5 +95,5 @@ if __name__ == "__main__":
             fname = os.path.join(dirpath,filename)
             if fname.endswith('.npz'):
                 print(fname)
-                process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
-                # process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
+                # process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
+                process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)

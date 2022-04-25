@@ -5,10 +5,11 @@ import pickle
 
 import json
 object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
-vocab=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
+vocab=json.load(open(processed_data_folder+"npz.annotation.txt.annotation.class_index_reverse.json", "r"))
+print(vocab)
 
 def has_concrete_object(filename):
-    annotation_file = root_folder+filename+".annotation.txt"
+    annotation_file = processed_data_folder+filename+".npz.annotation.txt"
     ann = open(annotation_file, "r").read()
     return has_concrete_object_ann(ann)
 
@@ -24,12 +25,12 @@ def has_concrete_object_ann(ann):
 
 
 def check_if_exact_one_object(filename, color, object_type):
-    disc_cond_file = root_folder+filename+".disc_cond.npy"
-    obs_file = root_folder+filename+".obs_cont.npy"
+    disc_cond_file = processed_data_folder+filename+".npz.disc_cond.npy"
+    obs_file = processed_data_folder+filename+".npz.obs_cont.npy"
     obs = np.load(obs_file)
     disc_cond = np.load(disc_cond_file)
 
-    return check_if_exact_one_object_obs(obs, disc_cond, color, object_type)
+    return check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type)
 
 def check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type):
     col1 = color_list[np.argmax(obs[0,14:22])]
@@ -54,7 +55,7 @@ def check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type):
     return matches == 1, index_first_match
 
 def get_new_obs(filename, obj_index, nocol=False, noarm=False):
-    obs_file = root_folder+filename+".obs_cont.npy"
+    obs_file = processed_data_folder+filename+".npz.obs_cont.npy"
     obs = np.load(obs_file)
     return get_new_obs_from_obs(obs, obj_index, nocol=nocol, noarm=noarm)
 
@@ -89,11 +90,11 @@ if __name__ == "__main__":
     # all_anns = []
 
     for filename in filenames:
-        if not ("Guillermo" in filename or "Tianwei" in filename):
-            continue
+        # if not ("Guillermo" in filename or "Tianwei" in filename):
+        #     continue
 
         has_conc_obj, color, object_type = has_concrete_object(filename)
-        annotation_file = root_folder+filename+".annotation.txt"
+        annotation_file = processed_data_folder+filename+".npz.annotation.txt"
         ann = open(annotation_file, "r").read()
         # all_anns.append(ann)
         # if "Paint" in ann: paint_anns.append(ann)
@@ -105,15 +106,15 @@ if __name__ == "__main__":
                 new_obs = get_new_obs(filename, obj_index, nocol=True, noarm=True)
                 new_base_filenames_file.write(filename+"\n")
 
-                # np.save(root_folder+filename+".obs_cont_single.npy", new_obs)
-                ann_arr = np.load(root_folder+filename+".annotation.npy")
+                # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
+                ann_arr = np.load(processed_data_folder+filename+".npz.annotation.txt.annotation.npy")
                 # ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[3:]])
                 ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[2:]])
-                np.save(root_folder+filename+".annotation_simp.npy", ann_arr_simp)
-                # np.save(root_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
-                # np.save(root_folder+filename+".obs_cont_single.npy", new_obs)
-                # np.save(root_folder+filename+".obs_cont_single_nocol.npy", new_obs)
-                np.save(root_folder+filename+".obs_cont_single_nocol_noarm.npy", new_obs)
+                np.save(processed_data_folder+filename+".annotation_simp.npy", ann_arr_simp)
+                # np.save(processed_data_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
+                # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
+                # np.save(processed_data_folder+filename+".obs_cont_single_nocol.npy", new_obs)
+                np.save(processed_data_folder+filename+".obs_cont_single_nocol_noarm.npy", new_obs)
 
     new_base_filenames_file.close()
 

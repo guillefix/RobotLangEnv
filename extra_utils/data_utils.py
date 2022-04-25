@@ -6,14 +6,17 @@ from constants import *
 import pickle
 import json
 object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
-vocab_default=json.load(open(processed_data_folder+"acts.npy.annotation.class_index.json", "r"))
+try:
+    vocab_default=json.load(open(processed_data_folder+"npz.annotation.txt.annotation.class_index.json", "r"))
+except:
+    print("no vocab file yet")
 
-def get_tokens(goal_str, input_lengths=[11], obj_stuff=None, vocab=None):
+def get_tokens(goal_str, max_length=11, input_lengths=[11], obj_stuff=None, vocab=None):
     if vocab==None:
         vocab = vocab_default
     tokens = []
     words = goal_str.split(" ")
-    for i in range(11):
+    for i in range(max_length):
         if i < len(words):
             word = words[i]
             tokens.append(vocab[word])

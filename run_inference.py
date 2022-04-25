@@ -32,8 +32,9 @@ import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
+parser.add_argument('--compute_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
-parser.add_argument('--save_sampled_traj', action='store_true', help='whether to save the sampled trajectory (really only makes sense if using_model)')
+parser.add_argument('--save_relabelled_trajs', action='store_true', help='whether to save the relabelled subtrajectories')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')
 parser.add_argument('--goal_str', help='specify goal string (if not specified, we use the one from the demo)')
 parser.add_argument('--zero_seed', action='store_true', help='whether to seed the obs and acts with zeros or with the beginning of the demo')
@@ -60,7 +61,7 @@ else:
     device = 'cpu'
 
 
-def run(using_model=False, computing_loss=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_sampled_traj=False, varying_args="session_id,rec_id", save_chunk_size=120):
+def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120):
     varying_args = varying_args.split(",")
     args = locals()
     # LOAD demo
@@ -248,7 +249,7 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
     # dynamic_temp_delta=0.99
     achieved_goal_end=False
     achieved_goal_anytime=False
-    if save_sampled_traj:
+    if save_relabelled_trajs:
         obss = []
         actss = []
         joints = []
@@ -312,7 +313,7 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
             acts_euler = list(p.getEulerFromQuaternion(acts[3:7]))
             action = act_pos + acts_euler + act_gripper
             # print(action)
-            if save_sampled_traj:
+            if save_relabelled_trajs:
                 # state = env.instance.calc_actor_state()
                 state = env.instance.calc_state()
                 # print(state)
@@ -327,7 +328,7 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
                 velocities.append(state['velocity'])
                 gripper_proprioception.append(state['gripper_proprioception'])
             obs, r, done, info = env.step(np.array(action))
-            if save_sampled_traj:
+            if save_relabelled_trajs:
                 targetJoints.append(info["target_poses"])
             # if using_model:
             #     print(obs[8+35*obj_index:11+35*obj_index])
@@ -357,6 +358,16 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
                 prev_acts_ext = np.concatenate([prev_acts_ext[1:],acts])
                 inputs = make_inputs(tokens, prev_obs, prev_acts)
 
+            if save_relabelled_trajs and using_model:
+                if scaled_obss is None:
+                    scaled_obss = new_obs
+                else:
+                    scaled_obss = np.concatenate([scaled_obss, new_obs])
+                if scaled_actss is None:
+                    scaled_actss = acts
+                else:
+                    scaled_actss = np.concatenate([scaled_actss, acts])
+
             if i == 0:
                 initial_state = obs
             else:
@@ -371,22 +382,22 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
                     if success:
                         break
                 # start_time = time.time()
-                if computing_loss:
-                    train_descriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, obj_stuff, env.instance.env_params)
-                    # print("--- Description computing time: %s seconds ---" % (time.time() - start_time)) #smol
-                    descriptions = train_descriptions + test_descriptions
-                    if descriptions != old_descriptions:
-                        new_descriptions = [desc for desc in descriptions if desc not in old_descriptions]
-                        lost_descriptions = [desc for desc in old_descriptions if desc not in descriptions]
-                        old_descriptions = descriptions
-                        # if > save_chunk_size:
-                        print("New descriptions: "+", ".join(new_descriptions))
-                        print("Lost descriptions: "+", ".join(lost_descriptions))
+                train_descriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, obj_stuff, env.instance.env_params)
+                # print("--- Description computing time: %s seconds ---" % (time.time() - start_time)) #smol
+                descriptions = train_descriptions + test_descriptions
+                if descriptions != old_descriptions:
+                    new_descriptions = [desc for desc in descriptions if desc not in old_descriptions]
+                    lost_descriptions = [desc for desc in old_descriptions if desc not in descriptions]
+                    old_descriptions = descriptions
+                    # if > save_chunk_size:
+                    print("New descriptions: "+", ".join(new_descriptions))
+                    print("Lost descriptions: "+", ".join(lost_descriptions))
+                    if compute_relabelled_logPs:
                         print("mean logP original goal_str: "+str(np.mean(logPs[-save_chunk_size:])))
                         if len(new_descriptions) > 0:
                             tokenss = []
                             good_descs = []
-                            obss = []
+                            obss_temp = []
                             for jj, desc in enumerate(new_descriptions):
                                 if input_mods[1] in ["obs_cont_single_nocol_noarm_trim_scaled", "obs_cont_single_nocol_noarm_scaled"]:
                                     has_conc_obj, color_temp, object_type_temp = has_concrete_object_ann(desc)
@@ -402,16 +413,16 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
                                 tokens = get_tokens(desc, input_lengths, obj_stuff)
                                 tokenss.append(tokens)
                                 good_descs.append(desc)
-                                new_obs = prev_obs_ext
+                                new_obs_temp = prev_obs_ext
                                 if input_mods[1][:8] == "obs_cont":
-                                    new_obs = get_obs_cont(new_obs)
+                                    new_obs_temp = get_obs_cont(new_obs_temp)
                                     if "single" in input_mods[1]:
                                         nocol = "nocol" in input_mods[1]
                                         noarm = "noarm" in input_mods[1]
-                                        new_obs = get_new_obs_from_obs(new_obs, obj_index_tmp, nocol=nocol, noarm=noarm)
+                                        new_obs_temp = get_new_obs_from_obs(new_obs_temp, obj_index_tmp, nocol=nocol, noarm=noarm)
                                 print(new_obs.shape)
-                                scaled_new_obs, _ = scale_inputs(new_obs, acts, "noarm" in input_mods[1])
-                                obss.append(new_obs)
+                                scaled_new_obs_temp, _ = scale_inputs(new_obs_temp, acts, "noarm" in input_mods[1])
+                                obss.append(scaled_new_obs_temp)
 
                             if len(good_descs) > 0:
                                 print("Good descriptions: "+", ".join(good_descs))
@@ -439,48 +450,47 @@ def run(using_model=False, computing_loss=False, render=False, goal_str=None, se
                                 print("mean logP achieved goal: "+str(mean_logPs))
                                 print("min mean logP achieved goal: "+str(mean_logPs[i])+", for goal "+good_descs[i])
 
-
-            if save_sampled_traj and using_model:
-                if scaled_obss is None:
-                    scaled_obss = new_obs
-                else:
-                    scaled_obss = np.concatenate([scaled_obss, new_obs])
-                if scaled_actss is None:
-                    scaled_actss = acts
-                else:
-                    scaled_actss = np.concatenate([scaled_actss, acts])
-
-
-    if save_sampled_traj:
-        train_descriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, obj_stuff, env.instance.env_params)
-        descriptions = train_descriptions + test_descriptions
-        print(descriptions)
-        if len(descriptions)>0:
-            description = descriptions[-1]
-            new_session_id = experiment_name
-            new_rec_id = str(uuid.uuid4())
-            if not Path(root_folder+"generated_data").is_dir():
-                os.mkdir(root_folder+"generated_data")
-            if not Path(root_folder+"generated_data/"+new_session_id).is_dir():
-                os.mkdir(root_folder+"generated_data/"+new_session_id)
-            if not Path(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
-                os.mkdir(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id)
-            npz_path = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id
-            save_traj(npz_path, acts, obs, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, [description], obj_stuff)
-            args_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
-            json_string = json.dumps(args)
-            with open(args_file, "w") as f:
-                f.write(json_string)
-            descriptions_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
-            with open(descriptions_file, "w") as f:
-                f.write(",".join(descriptions))
-            if using_model:
-                new_tokens = get_tokens(goal_str, input_lengths, obj_stuff)
-                if not Path(root_folder+"generated_data_processed").is_dir():
-                    os.mkdir(root_folder+"generated_data_processed")
-                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokens)
-                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], obss)
-                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], actss)
+                    if i>1 and save_relabelled_trajs:
+                        # train_descriptions, test_descriptions = sample_descriptions_from_state(initial_state, current_state, obj_stuff, env.instance.env_params)
+                        # descriptions = train_descriptions + test_descriptions
+                        # print(descriptions)
+                        if len(new_descriptions)>0:
+                            # description = descriptions[-1]
+                            descriptions = new_descriptions
+                            new_session_id = experiment_name
+                            new_rec_id = str(uuid.uuid4())
+                            if not Path(root_folder+"generated_data").is_dir():
+                                os.mkdir(root_folder+"generated_data")
+                            if not Path(root_folder+"generated_data/"+new_session_id).is_dir():
+                                os.mkdir(root_folder+"generated_data/"+new_session_id)
+                            if not Path(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
+                                os.mkdir(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id)
+                            npz_path = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id
+                            save_traj(npz_path, actss, obss, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, descriptions, obj_stuff)
+                            args_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
+                            json_string = json.dumps(args)
+                            with open(args_file, "w") as f:
+                                f.write(json_string)
+                            descriptions_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
+                            with open(descriptions_file, "w") as f:
+                                f.write(",".join(descriptions))
+                            if using_model:
+                                if not Path(root_folder+"generated_data_processed").is_dir():
+                                    os.mkdir(root_folder+"generated_data_processed")
+                                with open(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
+                                    for ii,desc in enumerate(descriptions):
+                                        new_tokens = get_tokens(desc, input_lengths, obj_stuff)[None]
+                                        if ii == 0:
+                                            new_tokenss = new_tokens
+                                        else:
+                                            new_tokenss = np.concatenate([new_tokenss,new_tokens])
+                                        file.write(desc)
+                                #TODO: tidy/generalize this
+                                times_to_go = np.expand_dims(np.array(range(i+1)),1)
+                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokenss)
+                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], scaled_obss)
+                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], scaled_actss)
+                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go)
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():

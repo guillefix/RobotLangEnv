@@ -121,3 +121,4 @@ src/results/*
 results/*
 *.out
 generated_data/*
+generated_data_processed/*

@@ -3,20 +3,47 @@ import os
 import scipy.ndimage.filters as filters
 from extra_utils.data_utils import fix_quaternions, get_obs_cont, get_ann_with_obj_types, get_tokens
 from constants import *
+import json
+try:
+    vocab_file=json.load(open(processed_data_folder+"npz.annotation.txt.annotation.class_index.json", "r"))
+except Exception as e:
+    print(e)
+    vocab_file = None
+    print("no vocab file yet at "+processed_data_folder)
+
+import argparse
+parser = argparse.ArgumentParser(description='Process data')
+parser.add_argument('--data_folder', default=None, help='folder from which to read data')
+parser.add_argument('--processed_data_folder', default=None, help='folder to which to write data')
 
 def process_file(filePath, save_folder, mods=["obs", "acts"], smoothing=0):
     seq_id = "_".join(filePath.split("/"))
     a = np.load(filePath)
     acts = a['acts']
     obs = a['obs']
+    # print(obs)
+    # print(acts)
     if len(acts) > 0 and len(obs) > 0:
         #fix quaternions
         # print(filePath)
         # print(acts.shape)
         acts[:,3:7] = fix_quaternions(acts[:,3:7])
         obs[:,3:7] = fix_quaternions(obs[:,3:7])
-        ann = a['goal_str'][0]
-        open(save_folder+"/"+seq_id+".annotation.txt", "w").write(ann)
+        with open(save_folder+"/"+seq_id+".annotation.txt", "w") as f:
+            for ann in a['goal_str']:
+                # ann = a['goal_str'][0]
+                f.write(ann+"\n")
+        if vocab_file is not None:
+            for i,ann in enumerate(a['goal_str']):
+                tokens = get_tokens(ann)[None]
+                if i == 0:
+                    tokenss = tokens
+                else:
+                    tokenss = np.concatenate([tokenss,tokens])
+            np.save(save_folder+"/"+seq_id+".annotation.txt.annotation", tokenss)
+        L = obs.shape[0]
+        times_to_go = np.expand_dims(np.array(range(L)),1)
+        np.save(save_folder+"/"+seq_id+".times_to_go", times_to_go)
 
         for mod in mods:
             if mod == "obs":
@@ -29,9 +56,14 @@ def process_file(filePath, save_folder, mods=["obs", "acts"], smoothing=0):
                 obs_cont = get_obs_cont(obs)
                 np.save(save_folder+"/"+seq_id+".obs_cont", obs_cont)
             if mod == "disc_cond":
-                tokens = get_tokens(ann)[:,0]
-                disc_cond = get_ann_with_obj_types(tokens, obs)
-                np.save(save_folder+"/"+seq_id+".disc_cond", disc_cond)
+                for ii,ann in enumerate(a['goal_str']):
+                    tokens = get_tokens(ann)[:,0]
+                    disc_cond = np.expand_dims(get_ann_with_obj_types(tokens, obs),1)[None]
+                    if ii == 0:
+                        disc_conds = disc_cond
+                    else:
+                        disc_conds = np.concatenate([disc_conds,disc_cond])
+                np.save(save_folder+"/"+seq_id+".disc_cond", disc_conds)
     else:
         print("ZERO-LENGTH SEQUENCE: "+filePath)
 
@@ -42,17 +74,26 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 print(rank)
-dirs = data_folder.split("/")
-os.chdir(data_folder+"..")
-tasks = list(os.walk(dirs[-2]))
-tasks = distribute_tasks(tasks, rank, size)
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.data_folder is not None:
+        data_folder = os. getcwd() + "/" + args.data_folder
+    if args.processed_data_folder is not None:
+        processed_data_folder = os. getcwd() + "/" + args.processed_data_folder
+    dirs = data_folder.split("/")
+    if len(dirs[-1]) == 0:
+        dirs = dirs[:-1]
+    os.chdir(data_folder+"/..")
+    tasks = list(os.walk(dirs[-1]))
+    # print(tasks)
+    tasks = distribute_tasks(tasks, rank, size)
 
-if not os.path.isdir(processed_data_folder):
-    os.mkdir(processed_data_folder)
-for dirpath, dirs, files in tasks:
-    for filename in files:
-        fname = os.path.join(dirpath,filename)
-        if fname.endswith('.npz'):
-            print(fname)
-            # process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
-            process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
+    if not os.path.isdir(processed_data_folder):
+        os.mkdir(processed_data_folder)
+    for dirpath, dirs, files in tasks:
+        for filename in files:
+            fname = os.path.join(dirpath,filename)
+            if fname.endswith('.npz'):
+                print(fname)
+                # process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
+                process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)

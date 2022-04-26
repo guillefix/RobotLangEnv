@@ -5,11 +5,14 @@ import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 #parser.add_argument('--eval_train_demos', action='store_true', help='whether to trained_demos')
 parser.add_argument('--base_filenames_file', help='file listing demo sequence ids')
+parser.add_argument('--sample_goals', action='store_true', help='whether to sample random goals for each task')
+parser.add_argument('--num_tasks', type=int, default=1, help='number of tasks (overriden by number of sequence ids if base_filenames_file is not None)')
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
+parser.add_argument('--compute_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
-parser.add_argument('--save_sampled_traj', action='store_true', help='whether to save the sampled trajectory (really only makes sense if using_model)')
+parser.add_argument('--save_relabelled_trajs', action='store_true', help='whether to save the relabelled subtrajectories')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')
 parser.add_argument('--goal_str', help='specify goal string (if not specified, we use the one from the demo)')
 parser.add_argument('--zero_seed', action='store_true', help='whether to seed the obs and acts with zeros or with the beginning of the demo')
@@ -45,16 +48,24 @@ if "DATA_FOLDER" not in os.environ:
 else:
     data_folder = os.environ["DATA_FOLDER"]
 
-if args.base_filenames_file is not None:
-    with open(args.base_filenames_file, "r") as f:
-        filenames = [x[:-1] for x in f.readlines()] # to remove new lines
-    #filenames = filenames[:2]
-
-#common_args = {"restore_objects": True}
 common_args = vars(args).copy()
 del common_args["base_filenames_file"]
 del common_args["num_repeats"]
-tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
+if args.base_filenames_file is not None:
+    with open(args.base_filenames_file, "r") as f:
+        filenames = [x[:-1] for x in f.readlines()] # to remove new lines
+    num_tasks = len(filenames)
+    tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
+elif args.sample_goals:
+    env_params = get_env_params()
+    _, _, all_descriptions = generate_all_descriptions(env_params)
+    def generate_goal():
+        return np.random.choice(all_descriptions)
+    tasks = args.num_repeats*[{**common_args, "goal_str": generate_goal()} for i in range(args.num_tasks)]
+
+    #filenames = filenames[:2]
+
+#common_args = {"restore_objects": True}
 tasks = distribute_tasks(tasks, rank, size)
 #print(tasks)
 

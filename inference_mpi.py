@@ -5,6 +5,8 @@ import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 #parser.add_argument('--eval_train_demos', action='store_true', help='whether to trained_demos')
 parser.add_argument('--base_filenames_file', help='file listing demo sequence ids')
+parser.add_argument('--sample_goals', action='store_true', help='whether to sample random goals for each task')
+parser.add_argument('--num_tasks', type=int, default=1, help='number of tasks (overriden by number of sequence ids if base_filenames_file is not None)')
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
@@ -46,16 +48,24 @@ if "DATA_FOLDER" not in os.environ:
 else:
     data_folder = os.environ["DATA_FOLDER"]
 
-if args.base_filenames_file is not None:
-    with open(args.base_filenames_file, "r") as f:
-        filenames = [x[:-1] for x in f.readlines()] # to remove new lines
-    #filenames = filenames[:2]
-
-#common_args = {"restore_objects": True}
 common_args = vars(args).copy()
 del common_args["base_filenames_file"]
 del common_args["num_repeats"]
-tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
+if args.base_filenames_file is not None:
+    with open(args.base_filenames_file, "r") as f:
+        filenames = [x[:-1] for x in f.readlines()] # to remove new lines
+    num_tasks = len(filenames)
+    tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
+elif args.sample_goals:
+    env_params = get_env_params()
+    _, _, all_descriptions = generate_all_descriptions(env_params)
+    def generate_goal():
+        return np.random.choice(all_descriptions)
+    tasks = args.num_repeats*[{**common_args, "goal_str": generate_goal()} for i in range(args.num_tasks)]
+
+    #filenames = filenames[:2]
+
+#common_args = {"restore_objects": True}
 tasks = distribute_tasks(tasks, rank, size)
 #print(tasks)
 

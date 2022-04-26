@@ -51,6 +51,8 @@ else:
 common_args = vars(args).copy()
 del common_args["base_filenames_file"]
 del common_args["num_repeats"]
+del common_args["sample_goals"]
+del common_args["num_tasks"]
 if args.base_filenames_file is not None:
     with open(args.base_filenames_file, "r") as f:
         filenames = [x[:-1] for x in f.readlines()] # to remove new lines

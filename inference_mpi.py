@@ -73,3 +73,4 @@ tasks = distribute_tasks(tasks, rank, size)
 
 for task in tasks:
     run(**task)
+print("Finished. Rank: "+str(rank))

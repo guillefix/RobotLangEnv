@@ -14,14 +14,26 @@ parser.add_argument('--processed_data_folder', default=None, help='folder to whi
 
 def has_concrete_object(filename):
     annotation_file = processed_data_folder+filename+".npz.annotation.txt"
-    ann = open(annotation_file, "r").read()
-    return has_concrete_object_ann(ann)
+    anns = open(annotation_file, "r").read().split("\n")
+    it_has = False
+    adjective = None
+    object = None
+    for ann in anns:
+        # print(anns)
+        if len(ann) > 0:
+            it_has, adjective, object = has_concrete_object_ann(ann)
+            if it_has:
+                break
+    return it_has, adjective, object
 
 def has_concrete_object_ann(ann):
     ann_arr = ann.split(" ")
     action = ann_arr[0]
     adjective = ann_arr[1]
     object = ann_arr[2]
+    # print(object)
+    # print(adjective)
+    # print(object)
     if adjective in color_list and object in object_types:
         return True, adjective, object
     else:
@@ -38,11 +50,10 @@ def check_if_exact_one_object(filename, color, object_type):
 
 def check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type):
     if len(disc_cond.shape) == 3:
-        disc_cond = disc_cond[0]
         index_first_match = -1
         matches = False
         for d in disc_cond:
-            matches, index_first_match = check_if_exact_one_object_from_obs(d)
+            matches, index_first_match = check_if_exact_one_object_from_obs(obs, d, color, object_type)
             if matches:
                 break
 
@@ -113,10 +124,12 @@ if __name__ == "__main__":
     for filename in filenames:
         # if not ("Guillermo" in filename or "Tianwei" in filename):
         #     continue
+        # print(filename)
 
         has_conc_obj, color, object_type = has_concrete_object(filename)
         annotation_file = processed_data_folder+filename+".npz.annotation.txt"
         ann = open(annotation_file, "r").read()
+        # print(ann)
         # all_anns.append(ann)
         # if "Paint" in ann: paint_anns.append(ann)
 

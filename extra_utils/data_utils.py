@@ -19,7 +19,7 @@ def get_tokens(goal_str, max_length=11, input_lengths=[11], obj_stuff=None, voca
     for i in range(max_length):
         if i < len(words):
             word = words[i]
-            tokens.append(vocab[word])
+            tokens.append(int(vocab[word]))
         else:
             tokens.append(66)
 

@@ -108,4 +108,5 @@ if __name__ == "__main__":
                 print(fname)
                 #process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
                 #process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
-                process_file(fname, processed_data_folder, mods=["obs" ,"acts", "obs_cont", "disc_cond"], smoothing=5)
+                process_file(fname, processed_data_folder, mods=["disc_cond"], smoothing=5)
+                # process_file(fname, processed_data_folder, mods=["obs" ,"acts", "obs_cont", "disc_cond"], smoothing=5)

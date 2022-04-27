@@ -110,6 +110,7 @@ def get_new_obs_from_obs(obs, obj_index, nocol=False, noarm=False):
 # get_new_obs(filenames[0], 0).shape
 
 if __name__ == "__main__":
+    args = parser.parse_args()
     if args.processed_data_folder is not None:
         if args.processed_data_folder[0] != "/":
             processed_data_folder = os. getcwd() + "/" + args.processed_data_folder

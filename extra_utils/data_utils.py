@@ -21,7 +21,7 @@ def get_tokens(goal_str, max_length=11, input_lengths=[11], obj_stuff=None, voca
             word = words[i]
             tokens.append(int(vocab[word]))
         else:
-            tokens.append(66)
+            tokens.append(72)
 
     tokens = np.array(tokens)
     # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")

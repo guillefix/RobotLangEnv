@@ -144,7 +144,10 @@ if __name__ == "__main__":
                 # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
                 ann_arr = np.load(processed_data_folder+filename+".npz.annotation.txt.annotation.npy")
                 # ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[3:]])
-                ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[2:]])
+                if len(ann_arr.shape) == 3:
+                    ann_arr_simp = np.concatenate([ann_arr[:,:1], ann_arr[:,2:]],axis=1)
+                else:
+                    ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[2:]])
                 # np.save(processed_data_folder+filename+".annotation_simp.npy", ann_arr_simp)
                 np.save(processed_data_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
                 # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)

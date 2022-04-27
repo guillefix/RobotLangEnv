@@ -455,29 +455,30 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                         # descriptions = train_descriptions + test_descriptions
                         # print(descriptions)
                         if len(new_descriptions)>0:
+                            root_folder_generated_data="/gpfsscratch/rech/imi/usc19dv/data/"
                             # description = descriptions[-1]
                             descriptions = new_descriptions
                             new_session_id = experiment_name
                             new_rec_id = str(uuid.uuid4())
-                            if not Path(root_folder+"generated_data").is_dir():
-                                os.mkdir(root_folder+"generated_data")
-                            if not Path(root_folder+"generated_data/"+new_session_id).is_dir():
-                                os.mkdir(root_folder+"generated_data/"+new_session_id)
-                            if not Path(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
-                                os.mkdir(root_folder+"generated_data/"+new_session_id+"/"+new_rec_id)
-                            npz_path = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id
+                            if not Path(root_folder_generated_data+"generated_data").is_dir():
+                                os.mkdir(root_folder_generated_data+"generated_data")
+                            if not Path(root_folder_generated_data+"generated_data/"+new_session_id).is_dir():
+                                os.mkdir(root_folder_generated_data+"generated_data/"+new_session_id)
+                            if not Path(root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id).is_dir():
+                                os.mkdir(root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id)
+                            npz_path = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id
                             save_traj(npz_path, actss, obss, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, descriptions, obj_stuff)
-                            args_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
+                            args_file = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
                             json_string = json.dumps(args)
                             with open(args_file, "w") as f:
                                 f.write(json_string)
-                            descriptions_file = root_folder+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
+                            descriptions_file = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
                             with open(descriptions_file, "w") as f:
                                 f.write(",".join(descriptions))
                             if using_model:
-                                if not Path(root_folder+"generated_data_processed").is_dir():
-                                    os.mkdir(root_folder+"generated_data_processed")
-                                with open(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
+                                if not Path(root_folder_generated_data+"generated_data_processed").is_dir():
+                                    os.mkdir(root_folder_generated_data+"generated_data_processed")
+                                with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
                                     for ii,desc in enumerate(descriptions):
                                         new_tokens = get_tokens(desc, input_lengths, obj_stuff)[None]
                                         if ii == 0:
@@ -487,10 +488,10 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                         file.write(desc)
                                 #TODO: tidy/generalize this
                                 times_to_go = np.expand_dims(np.array(range(i+1)),1)
-                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokenss)
-                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], scaled_obss)
-                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], scaled_actss)
-                                np.save(root_folder+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go)
+                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[0], new_tokenss)
+                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[1], scaled_obss)
+                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+input_mods[2], scaled_actss)
+                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go)
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():

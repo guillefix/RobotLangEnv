@@ -1,5 +1,16 @@
-import numpy as np
+import torch
 import os
+print("OWO2")
+from extra_utils import distribute_tasks
+print("OWO3")
+from mpi4py import MPI
+print("OWO1")
+comm = MPI.COMM_WORLD
+print("OWO0")
+rank = comm.Get_rank()
+size = comm.Get_size()
+print(rank)
+import numpy as np
 import scipy.ndimage.filters as filters
 from extra_utils.data_utils import fix_quaternions, get_obs_cont, get_ann_with_obj_types, get_tokens
 from constants import *
@@ -68,24 +79,24 @@ def process_file(filePath, save_folder, mods=["obs", "acts"], smoothing=0):
         print("ZERO-LENGTH SEQUENCE: "+filePath)
 
 
-from extra_utils import distribute_tasks
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-print(rank)
 if __name__ == "__main__":
     args = parser.parse_args()
     if args.data_folder is not None:
-        data_folder = os. getcwd() + "/" + args.data_folder
+        if args.data_folder[0] != "/":
+            data_folder = os. getcwd() + "/" + args.data_folder
+        else:
+            data_folder = args.data_folder
     if args.processed_data_folder is not None:
-        processed_data_folder = os. getcwd() + "/" + args.processed_data_folder
+        if args.processed_data_folder[0] != "/":
+            processed_data_folder = os. getcwd() + "/" + args.processed_data_folder
+        else:
+            processed_data_folder = args.processed_data_folder
     dirs = data_folder.split("/")
     if len(dirs[-1]) == 0:
         dirs = dirs[:-1]
     os.chdir(data_folder+"/..")
     tasks = list(os.walk(dirs[-1]))
-    # print(tasks)
+    print(tasks)
     tasks = distribute_tasks(tasks, rank, size)
 
     if not os.path.isdir(processed_data_folder):
@@ -95,6 +106,6 @@ if __name__ == "__main__":
             fname = os.path.join(dirpath,filename)
             if fname.endswith('.npz'):
                 print(fname)
-                # process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
-                # process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
-                process_file(fname, processed_data_folder, mods=["disc_cond"], smoothing=5)
+                #process_file(fname, processed_data_folder, mods=["obs", "acts"], smoothing=5)
+                #process_file(fname, processed_data_folder, mods=["obs_cont", "disc_cond"], smoothing=5)
+                process_file(fname, processed_data_folder, mods=["obs" ,"acts", "obs_cont", "disc_cond"], smoothing=5)

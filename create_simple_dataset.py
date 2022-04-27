@@ -8,6 +8,10 @@ object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
 vocab=json.load(open(processed_data_folder+"npz.annotation.txt.annotation.class_index_reverse.json", "r"))
 print(vocab)
 
+import argparse
+parser = argparse.ArgumentParser(description='Process data')
+parser.add_argument('--processed_data_folder', default=None, help='folder to which to write data')
+
 def has_concrete_object(filename):
     annotation_file = processed_data_folder+filename+".npz.annotation.txt"
     ann = open(annotation_file, "r").read()
@@ -95,6 +99,11 @@ def get_new_obs_from_obs(obs, obj_index, nocol=False, noarm=False):
 # get_new_obs(filenames[0], 0).shape
 
 if __name__ == "__main__":
+    if args.processed_data_folder is not None:
+        if args.processed_data_folder[0] != "/":
+            processed_data_folder = os. getcwd() + "/" + args.processed_data_folder
+        else:
+            processed_data_folder = args.processed_data_folder
     filenames=[x[:-1] for x in open(processed_data_folder+"base_filenames.txt","r").readlines()]
 
     new_base_filenames_file = open(processed_data_folder+"base_filenames_single_objs.txt", "w")

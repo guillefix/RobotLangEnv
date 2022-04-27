@@ -33,26 +33,38 @@ def check_if_exact_one_object(filename, color, object_type):
     return check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type)
 
 def check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type):
-    col1 = color_list[np.argmax(obs[0,14:22])]
-    col2 = color_list[np.argmax(obs[0,31:39])]
-    col3 = color_list[np.argmax(obs[0,48:56])]
-    obj_cols = [col1, col2, col3]
-    # print(obj_cols)
+    if len(disc_cond.shape) == 3:
+        disc_cond = disc_cond[0]
+        index_first_match = -1
+        matches = False
+        for d in disc_cond:
+            matches, index_first_match = check_if_exact_one_object_from_obs(d)
+            if matches:
+                break
 
-    type1 = vocab[str(int(disc_cond[-3]))]
-    type2 = vocab[str(int(disc_cond[-2]))]
-    type3 = vocab[str(int(disc_cond[-1]))]
-    obj_types = [type1, type2, type3]
-    # print(obj_types)
+        return matches, index_first_match
 
-    matches = 0
-    index_first_match = -1
-    for i in range(3):
-        if color == obj_cols[i] and object_type == obj_types[i]:
-            matches += 1
-            index_first_match = i
+    else:
+        col1 = color_list[np.argmax(obs[0,14:22])]
+        col2 = color_list[np.argmax(obs[0,31:39])]
+        col3 = color_list[np.argmax(obs[0,48:56])]
+        obj_cols = [col1, col2, col3]
+        # print(obj_cols)
 
-    return matches == 1, index_first_match
+        type1 = vocab[str(int(disc_cond[-3]))]
+        type2 = vocab[str(int(disc_cond[-2]))]
+        type3 = vocab[str(int(disc_cond[-1]))]
+        obj_types = [type1, type2, type3]
+        # print(obj_types)
+
+        matches = 0
+        index_first_match = -1
+        for i in range(3):
+            if color == obj_cols[i] and object_type == obj_types[i]:
+                matches += 1
+                index_first_match = i
+
+        return matches == 1, index_first_match
 
 def get_new_obs(filename, obj_index, nocol=False, noarm=False):
     obs_file = processed_data_folder+filename+".npz.obs_cont.npy"
@@ -110,8 +122,8 @@ if __name__ == "__main__":
                 ann_arr = np.load(processed_data_folder+filename+".npz.annotation.txt.annotation.npy")
                 # ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[3:]])
                 ann_arr_simp = np.concatenate([ann_arr[:1], ann_arr[2:]])
-                np.save(processed_data_folder+filename+".annotation_simp.npy", ann_arr_simp)
-                # np.save(processed_data_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
+                # np.save(processed_data_folder+filename+".annotation_simp.npy", ann_arr_simp)
+                np.save(processed_data_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
                 # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
                 # np.save(processed_data_folder+filename+".obs_cont_single_nocol.npy", new_obs)
                 np.save(processed_data_folder+filename+".obs_cont_single_nocol_noarm.npy", new_obs)

@@ -54,9 +54,9 @@ def get_obj_types(obss, vocab=None):
     # obss_color2 = obss_color2[0]
     # obss_color3 = obss_color3[0]
 
-    obss_disc1 = vocab[object_types[obss_disc1]]
-    obss_disc2 = vocab[object_types[obss_disc2]]
-    obss_disc3 = vocab[object_types[obss_disc3]]
+    obss_disc1 = int(vocab[object_types[obss_disc1]])
+    obss_disc2 = int(vocab[object_types[obss_disc2]])
+    obss_disc3 = int(vocab[object_types[obss_disc3]])
 
     # disc_cond = np.concatenate([ann, [obss_disc1, obss_color1, obss_disc2, obss_color2, obss_disc3, obss_color3]])
     # disc_cond = np.concatenate([ann, [obss_disc1, obss_disc2, obss_disc3]])

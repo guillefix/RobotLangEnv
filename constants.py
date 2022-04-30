@@ -21,6 +21,10 @@ if "PROCESSED_DATA_FOLDER" not in os.environ:
 else:
     processed_data_folder=os.environ["PROCESSED_DATA_FOLDER"]
 if "ROOT_DIR_MODEL" not in os.environ:
-    root_dir_model = "/home/guillefix/code/multimodal-transflower"
+    root_dir_model = "/home/guillefix/code/multimodal-transflower/"
 else:
     root_dir_model = os.environ["ROOT_DIR_MODEL"]
+if "ROOT_GENERATED_DATA" not in os.environ:
+    root_folder_generated_data = "/home/guillefix/code/inria/"
+else:
+    root_folder_generated_data = os.environ["ROOT_GENERATED_DATA"]

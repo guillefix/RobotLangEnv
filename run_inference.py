@@ -162,11 +162,11 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                 raise NotImplementedError
 
             if tokens.shape[1] == 1:
-                tokens = torch.tile(tokens, (1,n_tiles,1))
+                tokens = torch.from_numpy(np.tile(tokens.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
             if obs.shape[1] == 1:
-                obs = torch.tile(obs, (1,n_tiles,1))
+                obs = torch.from_numpy(np.tile(obs.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
             if acts.shape[1] == 1:
-                acts = torch.tile(acts, (1,n_tiles,1))
+                acts = torch.from_numpy(np.tile(acts.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
             # tokens = tokens.unsqueeze(1).cuda()
             return [tokens, obs, acts]
             # return [torch.from_numpy(tokens).unsqueeze(1).unsqueeze(1).cpu(), torch.from_numpy(prev_obs).unsqueeze(1).float().cpu(), torch.from_numpy(prev_acts).unsqueeze(1).float().cpu()]
@@ -215,7 +215,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
     #prepare first inputs
     obj_stuff = env.instance.get_stuff_to_save()
     if using_model or computing_loss:
-        tokens = get_tokens(goal_str, input_lengths, obj_stuff)
+        tokens = get_tokens(goal_str, input_lengths=input_lengths, obj_stuff=obj_stuff)
         prev_obs, prev_acts = scale_inputs(prev_obs, prev_acts, "noarm" in input_mods[1])
         prev_obs_ext = np.zeros((save_chunk_size+context_size_obs,125))
         prev_acts_ext = np.zeros((save_chunk_size+context_size_acts,8))
@@ -410,7 +410,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                         if obj['type'] == object_type and obj['color'] == color:
                                             matches += 1
                                             obj_index_tmp = i
-                                tokens = get_tokens(desc, input_lengths, obj_stuff)
+                                tokens = get_tokens(desc, input_lengths=input_lengths, obj_stuff=obj_stuff)
                                 tokenss.append(tokens)
                                 good_descs.append(desc)
                                 new_obs_temp = prev_obs_ext
@@ -436,8 +436,11 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                     # print(inputs[0].shape)
                                     # print(inputs[1].shape)
                                     # print(inputs[2].shape)
-                                    prepared_acts = torch.from_numpy(prev_acts_ext[j+context_size_acts]).unsqueeze(0).float().to(device)
-                                    prepared_acts = torch.tile(prepared_acts, (inputs[0].shape[1],1,1))
+                                    #prepared_acts = torch.from_numpy(prev_acts_ext[j+context_size_acts]).unsqueeze(0).float().to(device)
+                                    prepared_acts = np.expand_dims(prev_acts_ext[j+context_size_acts],0)
+                                    #prepared_acts = torch.tile(prepared_acts, (inputs[0].shape[1],1,1)) # not available in torch 1.7.0
+                                    prepared_acts = np.tile(prepared_acts, (inputs[0].shape[1],1,1))
+                                    prepared_acts = torch.from_numpy(prepared_acts).float().to(device)
                                     logP = model.training_step({**{"in_"+input_mods[j]: inputs[j].permute(1,0,2) for j in range(len(input_mods))}, "out_"+output_mods[0]: prepared_acts}, batch_idx=0, reduce_loss=False)
                                     logP = logP.cpu().numpy()
                                     # print(logP)
@@ -455,7 +458,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                         # descriptions = train_descriptions + test_descriptions
                         # print(descriptions)
                         if len(new_descriptions)>0:
-                            root_folder_generated_data="/gpfsscratch/rech/imi/usc19dv/data/"
+                            #root_folder_generated_data="/gpfsscratch/rech/imi/usc19dv/data/"
                             # description = descriptions[-1]
                             descriptions = new_descriptions
                             new_session_id = experiment_name
@@ -480,7 +483,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                     os.mkdir(root_folder_generated_data+"generated_data_processed")
                                 with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
                                     for ii,desc in enumerate(descriptions):
-                                        new_tokens = get_tokens(desc, input_lengths, obj_stuff)[None]
+                                        new_tokens = get_tokens(desc, input_lengths=input_lengths, obj_stuff=obj_stuff)[None]
                                         if ii == 0:
                                             new_tokenss = new_tokens
                                         else:

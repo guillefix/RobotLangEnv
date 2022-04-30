@@ -11,12 +11,12 @@ try:
 except:
     print("no vocab file yet")
 
-def get_tokens(goal_str, max_length=11, input_lengths=[11], obj_stuff=None, vocab=None):
+def get_tokens(goal_str, max_length=11, base_length=11, obj_stuff=None, vocab=None):
     if vocab==None:
         vocab = vocab_default
     tokens = []
     words = goal_str.split(" ")
-    for i in range(max_length):
+    for i in range(base_length):
         if i < len(words):
             word = words[i]
             tokens.append(int(vocab[word]))
@@ -25,9 +25,9 @@ def get_tokens(goal_str, max_length=11, input_lengths=[11], obj_stuff=None, voca
 
     tokens = np.array(tokens)
     # discrete_input = np.load(data_folder+filename+"."+input_mods[0]+".npy")
-    if input_lengths[0] == 10:
+    if max_length == 10:
         tokens = np.concatenate([tokens[:1], tokens[2:]])
-    elif input_lengths[0] == 14:
+    elif max_length == 14:
         obj_types = [vocab[t] for t in map(lambda x: x["type"], obj_stuff)]
         obj_types = np.array(obj_types)
         tokens = np.concatenate([tokens, obj_types])

@@ -135,8 +135,10 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
         if ttg_mod is not None:
             context_size_ttg=input_lengths[ttg_mod_idx]
 
-        obs_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+obs_mod+"_scaler.pkl", "rb"))
-        acts_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+acts_mod+"_scaler.pkl", "rb"))
+        #obs_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+obs_mod+"_scaler.pkl", "rb"))
+        #acts_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+acts_mod+"_scaler.pkl", "rb"))
+        obs_scaler = pickle.load(open(processed_data_folder+obs_mod+"_scaler.pkl", "rb"))
+        acts_scaler = pickle.load(open(processed_data_folder+acts_mod+"_scaler.pkl", "rb"))
 
 
         # print(processed_data_folder+"generated_data_"+session_id+"_"+rec_id+"_data."+obs_mod+".npy")
@@ -481,7 +483,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                         if obj['type'] == object_type and obj['color'] == color:
                                             matches += 1
                                             obj_index_tmp = i
-                                tokens = get_tokens(desc, input_lengths=input_lengths, obj_stuff=obj_stuff)
+                                tokens = get_tokens(desc, max_length=input_lengths[ann_mod_idx], obj_stuff=obj_stuff)
                                 tokenss.append(tokens)
                                 good_descs.append(desc)
                                 new_obs_temp = prev_obs_ext
@@ -558,7 +560,7 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                     os.mkdir(root_folder_generated_data+"generated_data_processed")
                                 with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
                                     for ii,desc in enumerate(descriptions):
-                                        new_tokens = get_tokens(desc, input_lengths=input_lengths, obj_stuff=obj_stuff)[None]
+                                        new_tokens = get_tokens(desc, max_length=input_lengths[ann_mod_idx], obj_stuff=obj_stuff)[None]
                                         if ii == 0:
                                             new_tokenss = new_tokens
                                         else:

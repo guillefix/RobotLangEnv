@@ -4,7 +4,7 @@ import os
 color_list = ['yellow', 'magenta', 'blue', 'green', 'red', 'cyan', 'black', 'white']
 
 if "ROOT_FOLDER" not in os.environ:
-    root_folder="/home/guillefix/code/inria/captionRLenv/"
+    root_folder="/home/guillefix/code/inria/RobotLangEnv/"
 else:
     root_folder = os.environ["ROOT_FOLDER"]
 

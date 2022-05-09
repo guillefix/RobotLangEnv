@@ -10,7 +10,7 @@ parser.add_argument('--num_tasks', type=int, default=1, help='number of tasks (o
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
-parser.add_argument('--compute_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
+parser.add_argument('--computing_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
 parser.add_argument('--save_relabelled_trajs', action='store_true', help='whether to save the relabelled subtrajectories')
 parser.add_argument('--render', action='store_true', help='whether to render the environment')
@@ -60,10 +60,7 @@ if args.base_filenames_file is not None:
     num_tasks = len(filenames)
     tasks = args.num_repeats*list(map(lambda x: {**common_args, "session_id": x.split("_")[1], "rec_id": x.split("_")[5]}, filenames))
 elif args.sample_goals:
-    env_params = get_env_params()
-    _, _, all_descriptions = generate_all_descriptions(env_params)
-    def generate_goal():
-        return np.random.choice(all_descriptions)
+    from extra_utils.run_utils import generate_goal
     tasks = args.num_repeats*[{**common_args, "goal_str": generate_goal()} for i in range(args.num_tasks)]
 
     #filenames = filenames[:2]

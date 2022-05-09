@@ -45,7 +45,8 @@ def gripper_camera(bullet_client, pos, ori):
     return img
 
 
-class playEnv(gym.GoalEnv):
+# class playEnv(gym.GoalEnv):
+class playEnv(gym.Env):
     metadata = {
         'render.modes': ['human', 'rgb_array'],
         'video.frames_per_second': 60
@@ -55,6 +56,7 @@ class playEnv(gym.GoalEnv):
                  obj_lower_bound = [-0.18, -0.18, -0.05], obj_upper_bound = [-0.18, -0.18, -0.05], sparse=True, use_orientation=False,
                  sparse_rew_thresh=0.05, fixed_gripper = False, return_velocity=True, max_episode_steps=250,
                  play=False, action_type = 'absolute_rpy', show_goal=True, arm_type= 'UR5'):
+        super().__init__()
         fps = 300
         self.timeStep = 1. / fps
         self.render_scene = False

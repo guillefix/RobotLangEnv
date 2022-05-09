@@ -8,10 +8,7 @@ import pickle
 ENV_PARAMS = get_env_params()
 
 # path = "./src/envs/shapenet_objects/"    # If the relative path doesn't work, we can use the absolute (complete) path.
-if "ROOT_FOLDER" not in os.environ:
-    root_folder="/home/guillefix/code/inria/captionRLenv/"
-else:
-    root_folder = os.environ["ROOT_FOLDER"]
+from constants import root_folder
 path = root_folder+"src/envs/shapenet_objects/"    # If the relative path doesn't work, we can use the absolute (complete) path.
 
 objects = [o for o in os.listdir(path) if 'urdf' in o and '_prototype' not in o]

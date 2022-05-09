@@ -34,6 +34,6 @@ srun -n 320 python3 inference_mpi.py --using_model --experiment_name transflower
 srun -n 320 python3 inference_mpi.py --using_model --experiment_name transflower_zp5_long_single_obj_nocol_trim_tw_single_more_filtered_norestore_objs --pretrained_name transflower_zp5_long_single_obj_nocol_trim_tw_single_more_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_relabelled_trajs --num_repeats 20
 srun -n 320 python3 inference_mpi.py --using_model --experiment_name transflower_zp5_short_single_obj_nocol_trim_tw_single_more_filtered_norestore_objs --pretrained_name transflower_zp5_short_single_obj_nocol_trim_tw_single_more_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_relabelled_trajs --num_repeats 20
 
-export DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/generated_data/
-export PROCESSED_DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
-srun -n 320 python3 inference_mpi.py --using_model --experiment_name transflower_udrl_short_single_obj_nocol_trim_tw_udrl_single_filtered_norestore_objs --pretrained_name transflower_udrl_short_single_obj_nocol_trim_tw_udrl_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_relabelled_trajs --num_repeats 20
+#export DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/generated_data/
+#export PROCESSED_DATA_FOLDER=/gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
+#srun -n 320 python3 inference_mpi.py --using_model --experiment_name transflower_udrl_short_single_obj_nocol_trim_tw_udrl_single_filtered_norestore_objs --pretrained_name transflower_udrl_short_single_obj_nocol_trim_tw_udrl_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs.txt --save_eval_results --save_relabelled_trajs --num_repeats 20

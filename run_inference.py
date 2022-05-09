@@ -218,21 +218,27 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
 
             if tokens.shape[1] == 1:
                 tokens = torch.from_numpy(np.tile(tokens.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
+                tokens = tokens.long().to(device)
                 # print(n_tiles)
                 #tokens = torch.tile(tokens, (1,n_tiles,1))
             if obs.shape[1] == 1:
                 obs = torch.from_numpy(np.tile(obs.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
+                obs = obs.float().to(device)
             if acts.shape[1] == 1:
                 acts = torch.from_numpy(np.tile(acts.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
+                acts = acts.float().to(device)
                 #acts = torch.tile(acts, (1,n_tiles,1))
             if times_to_go is not None:
                 if times_to_go.shape[1] == 1:
-                    times_to_go = torch.tile(times_to_go, (1,n_tiles,1))
+                    #times_to_go = torch.tile(times_to_go, (1,n_tiles,1))
+                    times_to_go = torch.from_numpy(np.tile(times_to_go.numpy(), (1,n_tiles,1))) #torch.tile not availble in torch 1.7.0
+                    times_to_go = times_to_go.float().to(device)
             # tokens = tokens.unsqueeze(1).cuda()
 
             if times_to_go is not None:
                 return [times_to_go, tokens, obs, acts]
             else:
+                #print("TOKENS", tokens.dtype, tokens.shape, tokens)
                 return [tokens, obs, acts]
             # return [torch.from_numpy(tokens).unsqueeze(1).unsqueeze(1).cpu(), torch.from_numpy(prev_obs).unsqueeze(1).float().cpu(), torch.from_numpy(prev_acts).unsqueeze(1).float().cpu()]
 
@@ -567,11 +573,11 @@ def run(using_model=False, computing_loss=False, compute_relabelled_logPs=False,
                                             new_tokenss = np.concatenate([new_tokenss,new_tokens])
                                         file.write(desc)
                                 #TODO: tidy/generalize this
-                                times_to_go = np.expand_dims(np.array(range(i+1)),1)
+                                times_to_go_save = np.expand_dims(np.array(range(i+1)),1)
                                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+ann_mod, new_tokenss)
                                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+obs_mod, scaled_obss)
                                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+acts_mod, scaled_actss)
-                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go)
+                                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go_save)
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():

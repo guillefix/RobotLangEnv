@@ -201,8 +201,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
             if using_torchscript:
                 scaled_acts = model(inputs)[0][0][0].cpu()
             else:
-                variance = np.max(np.abs(prev_acts2[0]-prev_acts2[-1]))
                 if dynamic_temp:
+                    variance = np.max(np.abs(prev_acts2[0]-prev_acts2[-1]))
                     # temp = np.max([temp*dynamic_temp_delta +(1-dynamic_temp_delta)*10*np.tanh(0.01/variance), 0.5])
                     temp = np.max([temp*dynamic_temp_delta +(1-dynamic_temp_delta)*10*np.tanh(0.01/variance), 0.8])
                 else:
@@ -235,7 +235,7 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
             if t>len(traj_data['acts'])-1:
                 break
             action = traj_data['acts'][t]
-            if computing_loss or compute_relabelled_logPs:
+            if computing_loss or computing_relabelled_logPs:
                 scaled_acts = acts_scaler.transform(action[None])
             if computing_loss:
                 # logP = model.training_step({**{"in_"+input_mods[j]: inputs[j].permute(1,0,2) for j in range(len(input_mods))}, "out_"+output_mods[0]: torch.from_numpy(scaled_acts).unsqueeze(0).float().to(device)}, batch_idx=0)

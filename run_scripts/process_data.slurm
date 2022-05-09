@@ -26,8 +26,10 @@ export ROOT_DIR_MODEL=/gpfswork/rech/imi/usc19dv/mt-lightning/
 export PRETRAINED_FOLDER=/gpfswork/rech/imi/usc19dv/mt-lightning/training/experiments/
 
 
-#srun --wait=0 -n 160 python3 process_data.py --data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data/ --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
-#srun --wait=0 -n 160 python3 create_simple_dataset.py --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
-srun --wait=0 -n 160 ../mt-lightning/feature_extraction/process_tw_data.sh /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
+srun --wait=0 -n 160 python3 process_data.py --data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data/ --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/
+#srun --wait=0 -n 160 bash -c 'python3 process_data.py --data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data/ --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/; echo Done process data; ../mt-lightning/feature_extraction/script_to_list_filenames /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/ npz.disc_cond.npy; echo Done generated base filenames file; python3 create_simple_dataset.py --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/; echo Done create simple dataset; ../mt-lightning/feature_extraction/process_tw_data.sh /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/; echo Done feature extraction'
+#../mt-lightning/feature_extraction/script_to_list_filenames /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/ npz.disc_cond.npy
+#srun --wait=0 -n 160 bash -c 'python3 create_simple_dataset.py --processed_data_folder /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/; echo Done create simple dataset'
+#srun --wait=0 -n 160 bash -c '../mt-lightning/feature_extraction/process_tw_data.sh /gpfsscratch/rech/imi/usc19dv/data/generated_data_processed/; echo Done feature extraction'
 #srun --wait=0 -n 16 python3 inference_mpi_owo.py 
 #srun -n 320 python3 inference_mpi.py --using_model --experiment_name train_transflower_zp5_single_obj_nocol_trim_tw_single_filtered_restore_objs --pretrained_name transflower_zp5_single_obj_nocol_trim_tw_single_filtered --base_filenames_file ${PROCESSED_DATA_FOLDER}base_filenames_single_objs_filtered.txt --save_eval_results --save_sampled_traj --num_repeats 20 --restore_objects

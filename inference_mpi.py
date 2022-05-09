@@ -68,7 +68,6 @@ elif args.sample_goals:
 #common_args = {"restore_objects": True}
 tasks = distribute_tasks(tasks, rank, size)
 #print(tasks)
-
 for task in tasks:
     run(**task)
 print("Finished. Rank: "+str(rank))

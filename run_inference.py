@@ -14,7 +14,7 @@ from src.envs.env_params import get_env_params
 from src.envs.color_generation import infer_color
 from extra_utils.data_utils import get_tokens
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_from_obs
-from src.envs.utils import save_traj
+#from src.envs.utils import save_traj
 import uuid
 from src.envs.reward_function import get_reward_from_state, sample_descriptions_from_state
 
@@ -260,10 +260,16 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
             if computing_relabelled_logPs:
                 compute_relabelled_logPs(obs_scaler, acts_scaler, t, new_descriptions, env, input_lengths, ann_mod_idx, prev_obs_ext, prev_acts_ext)
             if save_relabelled_trajs and using_model:
+                new_session_id = experiment_name
+                if "new_rec_id" in info:
+                    new_rec_id = info["new_rec_id"]
+                else:
+                    new_rec_id = str(uuid.uuid4())
                 if not Path(root_folder_generated_data+"generated_data_processed").is_dir():
                     os.mkdir(root_folder_generated_data+"generated_data_processed")
                 with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
-                    for ii,desc in enumerate(descriptions):
+                    obj_stuff = env.instance.get_stuff_to_save()
+                    for ii,desc in enumerate(new_descriptions):
                         new_tokens = get_tokens(desc, max_length=input_lengths[ann_mod_idx], obj_stuff=obj_stuff)[None]
                         if ii == 0:
                             new_tokenss = new_tokens

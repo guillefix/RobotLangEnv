@@ -1,12 +1,17 @@
 import pybullet as p
 from extra_utils.data_utils import get_obs_cont, fix_quaternions, one_hot, get_tokens
 from create_simple_dataset import has_concrete_object_ann, check_if_exact_one_object_from_obs, get_new_obs_from_obs
+from pathlib import Path
+from constants import *
+from src.envs.utils import save_traj as save_traj_inner
+import json
 
 import torch
 import numpy as np
 
 from src.envs.env_params import get_env_params
 from src.envs.descriptions import generate_all_descriptions
+import uuid
 env_params = get_env_params()
 _, _, all_descriptions = generate_all_descriptions(env_params)
 
@@ -155,6 +160,9 @@ def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts
 def scale_outputs(acts_scaler, scaled_acts):
     if acts_scaler is not None:
         acts = acts_scaler.inverse_transform(scaled_acts)
+    else:
+        acts = scaled_acts
+    print(acts)
     acts = acts[0]
     act_pos = [acts[0],acts[1],acts[2]]
     act_gripper = [acts[7]]
@@ -224,7 +232,7 @@ def compute_relabelled_logPs(obs_scaler, acts_scaler, t, new_descriptions, env, 
 def save_traj(descriptions, args, traj_data, obj_stuff):
     #root_folder_generated_data="/gpfsscratch/rech/imi/usc19dv/data/"
     # description = descriptions[-1]
-    experimen_name = args["experiment_name"]
+    experiment_name = args["experiment_name"]
     new_session_id = experiment_name
     new_rec_id = str(uuid.uuid4())
     if not Path(root_folder_generated_data+"generated_data").is_dir():
@@ -235,7 +243,7 @@ def save_traj(descriptions, args, traj_data, obj_stuff):
         os.mkdir(root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id)
     npz_path = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id
     actss, obss, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception = traj_data
-    save_traj(npz_path, actss, obss, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, descriptions, obj_stuff)
+    save_traj_inner(npz_path, actss, obss, joints, targetJoints, acts_rpy, acts_rpy_rel, velocities, gripper_proprioception, descriptions, obj_stuff)
     args_file = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id+"/args.json"
     json_string = json.dumps(args)
     with open(args_file, "w") as f:
@@ -243,3 +251,5 @@ def save_traj(descriptions, args, traj_data, obj_stuff):
     descriptions_file = root_folder_generated_data+"generated_data/"+new_session_id+"/"+new_rec_id+"/descriptions.txt"
     with open(descriptions_file, "w") as f:
         f.write(",".join(descriptions))
+
+    return new_rec_id

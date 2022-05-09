@@ -38,6 +38,8 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 
             high = np.array([6, 6, 6, 1, 1, 1, 1, 1])
             self.action_space = spaces.Box(-high, high)
+            if save_relabelled_trajs:
+                assert check_completed_goals
             acts_range = 3*np.ones(8)
             self.use_dict_space = use_dict_space
             self.sample_random_goal = sample_random_goal
@@ -148,11 +150,14 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 	    return obs['observation'], 0, done, {'target_poses': targetPoses}
 
 	def update_traj_data1(self, action):
-            action_quat = self.acts_scaler.inverse_transform(action)[0]
+            if self.acts_scaler is not None:
+                action_quat = self.acts_scaler.inverse_transform(action)[0]
+            else:
+                action_quat = action
             action = scale_outputs(self.acts_scaler, action)
             act_pos = action[0:3].tolist()
-            acts_euler = action[3:7].tolist()
-            act_gripper = action[7:8].tolist()
+            acts_euler = action[3:6].tolist()
+            act_gripper = action[6:7].tolist()
             state = self.instance.calc_state()
             # print(state)
             rel_xyz = np.array(act_pos)-np.array(state['observation'][0:3])
@@ -181,13 +186,14 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
                 print("New descriptions: "+", ".join(new_descriptions))
                 print("Lost descriptions: "+", ".join(lost_descriptions))
 
+            new_rec_id = None
             if self.t>1 and self.save_relabelled_trajs:
                 if len(new_descriptions)>0:
                     obj_stuff = self.instance.get_stuff_to_save()
                     traj_data = (self.actss, self.obss, self.joints, self.targetJoints, self.acts_rpy, self.acts_rpy_rel, self.velocities, self.gripper_proprioception)
-                    save_traj(new_descriptions, self.args, traj_data, obj_stuff)
+                    new_rec_id = save_traj(new_descriptions, self.args, traj_data, obj_stuff)
 
-            return new_descriptions
+            return new_descriptions, new_rec_id
 
 	def step(self, action):
             # update traj data
@@ -218,9 +224,12 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
                 self.initial_state = obs
             obj_stuff = self.instance.get_stuff_to_save()
             success = get_reward_from_state(self.initial_state, obs, obj_stuff, self.goal_str, self.instance.env_params)
+            new_rec_id = None
             if self.check_completed_goals:
-                new_descriptions = self.find_completed_goals(obs)
+                new_descriptions, new_rec_id = self.find_completed_goals(obs)
                 info["new_descriptions"] = new_descriptions
 
             self.t += 1
+            if new_rec_id is not None:
+                info["new_rec_id"] = new_rec_id
             return inputs, SUCCESS_REWARD if success else 0, success or self.t==self.max_episode_length, info

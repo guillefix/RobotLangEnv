@@ -96,7 +96,7 @@ if __name__ == "__main__":
         dirs = dirs[:-1]
     os.chdir(data_folder+"/..")
     tasks = list(os.walk(dirs[-1]))
-    print(tasks)
+    #print(tasks)
     tasks = distribute_tasks(tasks, rank, size)
 
     if not os.path.isdir(processed_data_folder):

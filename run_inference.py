@@ -92,9 +92,9 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         else:
             model = model.to(device)
 
-        input_dims = [int(x) for x in opt.dins.split(",")]
-        output_dims = [int(x) for x in opt.douts.split(",")]
-        input_lengths = [int(x) for x in opt.input_lengths.split(",")]
+        input_dims = [int(x) for x in str(opt.dins).split(",")]
+        output_dims = [int(x) for x in str(opt.douts).split(",")]
+        input_lengths = [int(x) for x in str(opt.input_lengths).split(",")]
 
         input_mods = opt.input_modalities.split(",")
         output_mods = opt.output_modalities.split(",")
@@ -190,8 +190,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
     achieved_goal_end=False
     achieved_goal_anytime=False
     if using_model:
-        self.scaled_obss = None
-        self.scaled_actss = None
+        scaled_obss = None
+        scaled_actss = None
 
     logPs = []
     for t in range(max_number_steps):
@@ -208,7 +208,7 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                 else:
                     temp = temp
                 # start_time = time.time()
-                scaled_acts, _, logPs_temp = model(obs, temp=temp)
+                scaled_acts, _, logPs_temp = model(tuple((torch.from_numpy(o).to(model.device) for o in obs)), temp=temp)
                 # print("--- Inference time: %s seconds ---" % (time.time() - start_time))
                 scaled_acts = scaled_acts[0][0].cpu()
                 if computing_loss:
@@ -244,47 +244,47 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                 logPs.append(logP)
                 # print(logP)
 
-            #run env
-            obs, r, success, info = env.step(action)
+        #run env
+        obs, r, success, info = env.step(action)
 
-            new_descriptions = info["new_descriptions"]
+        new_descriptions = info["new_descriptions"]
 
+        if computing_relabelled_logPs:
+            if computing_loss:
+                print("mean logP original goal_str: "+str(np.mean(logPs[-save_chunk_size:])))
+            raw_obs = info["raw_obs"]
+            prev_obs_ext = np.concatenate([prev_obs_ext[1:],raw_obs[None]])
+            prev_acts_ext = np.concatenate([prev_acts_ext[1:],scaled_acts[None]])
+
+        if len(new_descriptions) > 0:
             if computing_relabelled_logPs:
-                if computing_loss:
-                    print("mean logP original goal_str: "+str(np.mean(logPs[-save_chunk_size:])))
-                raw_obs = info["raw_obs"]
-                prev_obs_ext = np.concatenate([prev_obs_ext[1:],raw_obs[None]])
-                prev_acts_ext = np.concatenate([prev_acts_ext[1:],scaled_acts[None]])
+                compute_relabelled_logPs(obs_scaler, acts_scaler, t, new_descriptions, env, input_lengths, ann_mod_idx, prev_obs_ext, prev_acts_ext)
+            if save_relabelled_trajs and using_model:
+                if not Path(root_folder_generated_data+"generated_data_processed").is_dir():
+                    os.mkdir(root_folder_generated_data+"generated_data_processed")
+                with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
+                    for ii,desc in enumerate(descriptions):
+                        new_tokens = get_tokens(desc, max_length=input_lengths[ann_mod_idx], obj_stuff=obj_stuff)[None]
+                        if ii == 0:
+                            new_tokenss = new_tokens
+                        else:
+                            new_tokenss = np.concatenate([new_tokenss,new_tokens])
+                        file.write(desc)
+                #TODO: tidy/generalize this
+                times_to_go_save = np.expand_dims(np.array(range(t+1)),1)
+                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+ann_mod, new_tokenss)
+                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+obs_mod, scaled_obss)
+                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+acts_mod, scaled_actss)
+                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go_save)
 
-            if len(new_descriptions) > 0:
-                if computing_relabelled_logPs:
-                    compute_relabelled_logPs(obs_scaler, acts_scaler, t, new_descriptions, env, input_lengths, ann_mod_idx, prev_obs_ext, prev_acts_ext)
-                if save_relabelled_trajs and using_model:
-                    if not Path(root_folder_generated_data+"generated_data_processed").is_dir():
-                        os.mkdir(root_folder_generated_data+"generated_data_processed")
-                    with open(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".annotation.txt", "w") as file:
-                        for ii,desc in enumerate(descriptions):
-                            new_tokens = get_tokens(desc, max_length=input_lengths[ann_mod_idx], obj_stuff=obj_stuff)[None]
-                            if ii == 0:
-                                new_tokenss = new_tokens
-                            else:
-                                new_tokenss = np.concatenate([new_tokenss,new_tokens])
-                            file.write(desc)
-                    #TODO: tidy/generalize this
-                    times_to_go_save = np.expand_dims(np.array(range(t+1)),1)
-                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+ann_mod, new_tokenss)
-                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+obs_mod, scaled_obss)
-                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+acts_mod, scaled_actss)
-                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go_save)
-
+        print(goal_str+": ",success)
+        achieved_goal_end = success
+        if success:
             print(goal_str+": ",success)
-            achieved_goal_end = success
+            achieved_goal_anytime = True
+        if using_model:
             if success:
-                print(goal_str+": ",success)
-                achieved_goal_anytime = True
-            if using_model:
-                if success:
-                    break
+                break
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():

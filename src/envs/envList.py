@@ -166,13 +166,13 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 	def find_completed_goals(self, obs):
 		obj_stuff = self.instance.get_stuff_to_save()
 		# start_time = time.time()
-		train_descriptions, test_descriptions = sample_descriptions_from_state(self.initial_state, obs, obj_stuff, env.instance.env_params)
+		train_descriptions, test_descriptions = sample_descriptions_from_state(self.initial_state, obs, obj_stuff, self.instance.env_params)
 		# print("--- Description computing time: %s seconds ---" % (time.time() - start_time)) #smol
 		descriptions = train_descriptions + test_descriptions
 		new_descriptions = []
 		if descriptions != self.old_descriptions:
-		    new_descriptions = [desc for desc in descriptions if desc not in old_descriptions]
-		    lost_descriptions = [desc for desc in old_descriptions if desc not in descriptions]
+		    new_descriptions = [desc for desc in descriptions if desc not in self.old_descriptions]
+		    lost_descriptions = [desc for desc in self.old_descriptions if desc not in descriptions]
 		    self.old_descriptions = descriptions
 		    # if > save_chunk_size:
 		    print("New descriptions: "+", ".join(new_descriptions))

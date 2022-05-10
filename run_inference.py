@@ -312,11 +312,11 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                     f.write(json_string)
             if os.path.exists(filename):
                 with open(filename, "a") as f:
-                    f.write(str(achieved_goal_end)+","+str(i)+"\n")
+                    f.write(str(achieved_goal_end)+","+str(t)+"\n")
             else:
                 with open(filename, "w") as f:
                     f.write("achieved_goal_end,num_steps"+"\n")
-                    f.write(str(achieved_goal_end)+","+str(i)+"\n")
+                    f.write(str(achieved_goal_end)+","+str(t)+"\n")
         else:
             filename = root_folder+"results/"+experiment_name+"/"+session_id+"_"+rec_id+"_"+"_".join(goal_str.split(" "))+"_"+str(restore_objects)+".txt"
             if achieved_goal_anytime:

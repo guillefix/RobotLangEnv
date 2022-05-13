@@ -15,10 +15,16 @@ import uuid
 env_params = get_env_params()
 _, _, all_descriptions = generate_all_descriptions(env_params)
 
-def generate_goal(single_obj=False):
-    if single_obj:
+def generate_goal(single_obj=False, use_train_set=False):
+    if use_train_set:
+        filenames = [x[:-1] for x in open(processed_data_folder+"/base_filenames_single_objs_filtered.txt", "r").readlines()]
+        descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read()[:-1] for x in filenames]
+        # print(descriptions)
+    else:
         descriptions = list(all_descriptions)
+    if single_obj:
         ann = np.random.choice(descriptions)
+        print(ann)
         has_conc_obj, adj, obj = has_concrete_object_ann(ann)
         while not has_conc_obj:
             ann = np.random.choice(descriptions)
@@ -26,7 +32,7 @@ def generate_goal(single_obj=False):
             descriptions.remove(ann)
         return ann
     else:
-        return np.random.choice(all_descriptions)
+        return np.random.choice(descriptions)
 
 def scale_inputs(obs_scaler, acts_scaler, prev_obs, prev_acts, noarm=True, add_batch_dim = False):
     # print(prev_obs.shape)
@@ -162,7 +168,7 @@ def scale_outputs(acts_scaler, scaled_acts):
         acts = acts_scaler.inverse_transform(scaled_acts)
     else:
         acts = scaled_acts
-    print(acts)
+    # print(acts)
     acts = acts[0]
     act_pos = [acts[0],acts[1],acts[2]]
     act_gripper = [acts[7]]

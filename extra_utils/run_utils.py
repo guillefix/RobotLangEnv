@@ -162,7 +162,7 @@ def scale_outputs(acts_scaler, scaled_acts):
         acts = acts_scaler.inverse_transform(scaled_acts)
     else:
         acts = scaled_acts
-    print(acts)
+    #print(acts)
     acts = acts[0]
     act_pos = [acts[0],acts[1],acts[2]]
     act_gripper = [acts[7]]

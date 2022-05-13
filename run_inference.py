@@ -85,7 +85,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         default_save_path = pretrained_folder+pretrained_name
         logs_path = default_save_path
         #load model:
-        model, opt = load_model_from_logs_path(logs_path)
+        #model, opt = load_model_from_logs_path(logs_path, version_index=-2)
+        model, opt = load_model_from_logs_path(logs_path, version_index=-1)
         if using_torchscript:
             print("Using torchscript")
             model = torch.jit.load(model_folder+'compiled_jit.pth')

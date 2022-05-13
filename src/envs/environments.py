@@ -123,7 +123,7 @@ class playEnv(gym.Env):
         self.instance.reset(o, info_reset=info_reset, description=description, joint_poses=joint_poses, objects=objects, restore_objs=restore_objs)
 
 
-    def render(self, mode):
+    def render(self, mode="human"):
         if (mode == "human"):
             self.render_scene = True
             return np.array([])

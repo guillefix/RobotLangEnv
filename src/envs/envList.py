@@ -33,7 +33,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 				 save_relabelled_trajs = False, check_completed_goals = True, sample_random_goal = False, sample_goal_from_train_set = False,
 				 vocab_size = 73, max_episode_length = 5000,
 				 desc_max_len = 11, obs_mod="",
-				 goal_str = None, use_dict_space = False,
+				 goal_str = None, use_dict_space = False, simple_obs = False,
 				 args = {},
 				 num_objects = 3, env_range_low = [-1.0, -1.0, -0.2], env_range_high = [1.0, 1.0, 1.0],
              goal_range_low= [-0.18, 0, 0.05], goal_range_high = [0.18, 0.3, 0.1], use_orientation=True):
@@ -46,22 +46,37 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 			self.use_dict_space = use_dict_space
 			self.sample_random_goal = sample_random_goal
 			self.sample_goal_from_train_set = sample_goal_from_train_set
-			if use_dict_space:
-			    if prev_obs is not None and prev_acts is not None:
-			        if times_to_go is not None:
-			            self.observation_space = spaces.Dict({"times_to_go": spaces.Box(low=0, high=10000, shape=times_to_go.shape), "ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=prev_obs.shape), "acts": spaces.Box(low=-6, high=6, shape=prev_acts.shape)})
-			        else:
-			            self.observation_space = spaces.Dict({"ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=prev_obs.shape), "acts": spaces.Box(low=-6, high=6, shape=prev_acts.shape)})
-			    else:
-			        self.observation_space = spaces.Dict({"times_to_go": spaces.Box(low=0, high=10000, shape=(1,)), "ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=(1,)), "acts": spaces.Box(low=6, high=6, shape=(1,))})
+			self.simple_obs = simple_obs
+			if self.simple_obs:
+				if "obs_cont_single_nocol_noarm" in obs_mod:
+					n = 18
+				elif obs_mod == "obs":
+					n = 125
+				elif obs_mod == "obs_cont":
+					n = 71
+				self.observation_space = spaces.Box(low=-6, high=6, shape=(n,))
+				assert prev_obs is None
+				assert prev_acts is None
+				assert times_to_go is None
+				self.prev_obs = np.zeros((1,n))
+				self.prev_acts = np.zeros((1,8))
 			else:
-			    if prev_obs is not None and prev_acts is not None:
-			        if times_to_go is not None:
-			            self.observation_space = spaces.Tuple((spaces.Box(low=0, high=10000, shape=times_to_go.shape),spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=prev_obs.shape), spaces.Box(low=-6, high=6, shape=prev_acts.shape)))
-			        else:
-			            self.observation_space = spaces.Tuple((spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=prev_obs.shape), spaces.Box(low=-6, high=6, shape=prev_acts.shape)))
-			    else:
-			        self.observation_space = spaces.Tuple((spaces.Box(low=0, high=10000, shape=(1,)),spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=(1,)), spaces.Box(low=6, high=6, shape=(1,))))
+				if use_dict_space:
+				    if prev_obs is not None and prev_acts is not None:
+				        if times_to_go is not None:
+				            self.observation_space = spaces.Dict({"times_to_go": spaces.Box(low=0, high=10000, shape=times_to_go.shape), "ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=prev_obs.shape), "acts": spaces.Box(low=-6, high=6, shape=prev_acts.shape)})
+				        else:
+				            self.observation_space = spaces.Dict({"ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=prev_obs.shape), "acts": spaces.Box(low=-6, high=6, shape=prev_acts.shape)})
+				    else:
+				        self.observation_space = spaces.Dict({"times_to_go": spaces.Box(low=0, high=10000, shape=(1,)), "ann": spaces.MultiDiscrete(desc_max_len*[vocab_size]), "obs": spaces.Box(low=-6, high=6, shape=(1,)), "acts": spaces.Box(low=6, high=6, shape=(1,))})
+				else:
+				    if prev_obs is not None and prev_acts is not None:
+				        if times_to_go is not None:
+				            self.observation_space = spaces.Tuple((spaces.Box(low=0, high=10000, shape=times_to_go.shape),spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=prev_obs.shape), spaces.Box(low=-6, high=6, shape=prev_acts.shape)))
+				        else:
+				            self.observation_space = spaces.Tuple((spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=prev_obs.shape), spaces.Box(low=-6, high=6, shape=prev_acts.shape)))
+				    else:
+				        self.observation_space = spaces.Tuple((spaces.Box(low=0, high=10000, shape=(1,)),spaces.MultiDiscrete(desc_max_len*[vocab_size]), spaces.Box(low=-6, high=6, shape=(1,)), spaces.Box(low=6, high=6, shape=(1,))))
 
 			object_types = pickle.load(open(root_folder+"object_types.pkl","rb"))
 			self.goal_str = goal_str
@@ -100,7 +115,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 		torch.manual_seed(seed)
 
 	def reset(self, o = None, vr =None, description=None, info_reset=None, joint_poses=None, objects=None, restore_objs=False):
-		if self.sample_random_goal:
+		if self.sample_random_goal or description is None:
 			self.goal_str = generate_goal("single" in self.obs_mod, use_train_set=self.sample_goal_from_train_set)
 		if description is not None:
 			self.goal_str = description
@@ -138,10 +153,12 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 					obj_index = i
 		self.obj_index = obj_index
 		if self.times_to_go is not None:
-			inputs = (self.tokens, self.prev_obs, self.prev_acts, self.times_to_go)
+			inputs = (self.times_to_go, self.tokens, self.prev_obs, self.prev_acts)
 		else:
 			inputs = (self.tokens, self.prev_obs, self.prev_acts)
-		if self.use_dict_space:
+		if self.simple_obs:
+			inputs = self.observation_space.sample()
+		elif self.use_dict_space:
 			if self.times_to_go is not None:
 				inputs = {"times_to_go": inputs[0], "ann": inputs[1], "obs": inputs[2], "acts": inputs[3]}
 			else:
@@ -221,11 +238,17 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 		if self.save_relabelled_trajs:
 			self.targetJoints.append(info["target_poses"])
 		inputs = make_inputs(self.obs_scaler, self.acts_scaler, obs, action_scaled, self.prev_obs, self.prev_acts, self.times_to_go, self.tokens, self.obj_index, self.obs_mod, convert_to_torch=False)
-		if self.use_dict_space:
+		if self.simple_obs:
+			inputs = inputs[1][0]
+			# if self.obs_mod=="obs_cont_single_nocol_noarm":
+			# 	inputs = np.concatenate([inputs[:11, 12:]]) #ehm should change this in the data processing
+		elif self.use_dict_space:
 			if self.times_to_go is not None:
 			    inputs = {"times_to_go": inputs[0], "ann": inputs[1], "obs": inputs[2], "acts": inputs[3]}
 			else:
 			    inputs = {"ann": inputs[0], "obs": inputs[1], "acts": inputs[2]}
+
+		processed_obs = inputs
 
 		info = {**info, "raw_obs": obs}
 
@@ -242,4 +265,4 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 		self.t += 1
 		if new_rec_id is not None:
 		    info["new_rec_id"] = new_rec_id
-		return inputs, SUCCESS_REWARD if success else 0, success or self.t==self.max_episode_length, info
+		return processed_obs, SUCCESS_REWARD if success else 0, success or self.t==self.max_episode_length, info

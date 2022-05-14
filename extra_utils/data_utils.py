@@ -93,9 +93,9 @@ def get_obs_cont(obss):
     obss_color1 = np.stack([one_hot(color_list.index(infer_color(x)),n) for x in obss_color1])
     obss_color2 = np.stack([one_hot(color_list.index(infer_color(x)),n) for x in obss_color2])
     obss_color3 = np.stack([one_hot(color_list.index(infer_color(x)),n) for x in obss_color3])
-    obss_disc1 = np.argmax(obss[:,14:37], axis=1)
-    obss_disc2 = np.argmax(obss[:,49:72], axis=1)
-    obss_disc3 = np.argmax(obss[:,84:107], axis=1)
+    # obss_disc1 = np.argmax(obss[:,14:37], axis=1)
+    # obss_disc2 = np.argmax(obss[:,49:72], axis=1)
+    # obss_disc3 = np.argmax(obss[:,84:107], axis=1)
     obss_cont = np.concatenate([obss[:,:14], obss_color1, obss[:,40:49], obss_color2, obss[:,75:84], obss_color3, obss[:,110:]],axis=1)
     return obss_cont
 

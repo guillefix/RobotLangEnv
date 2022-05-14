@@ -56,6 +56,8 @@ def process_file(filePath, save_folder, mods=["obs", "acts"], smoothing=0):
         times_to_go = np.expand_dims(np.array(range(L)),1)
         np.save(save_folder+"/"+seq_id+".times_to_go", times_to_go)
 
+        # actually one of the elements is constant, because the pad colour has four elements for some reason and the fourth element is constant... (remember see instance.py to see the menaing of each of the obs dimensions)
+        # maybe should remove the constant element..
         for mod in mods:
             if mod == "obs":
                 np.save(save_folder+"/"+seq_id+".obs", obs)

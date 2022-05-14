@@ -169,7 +169,8 @@ def scale_outputs(acts_scaler, scaled_acts):
     else:
         acts = scaled_acts
     #print(acts)
-    acts = acts[0]
+    if len(acts.shape) == 2:
+        acts = acts[0]
     act_pos = [acts[0],acts[1],acts[2]]
     act_gripper = [acts[7]]
     acts_euler = list(p.getEulerFromQuaternion(acts[3:7]))

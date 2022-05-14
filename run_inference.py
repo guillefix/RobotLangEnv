@@ -287,11 +287,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         print(goal_str+": ",success)
         achieved_goal_end = success
         if success:
-            print(goal_str+": ",success)
             achieved_goal_anytime = True
-        if using_model:
-            if success:
-                break
+            break
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():
@@ -334,11 +331,11 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                     f.write("UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"+","+goal_str+"\n")
             if os.path.exists(filename):
                 with open(filename, "a") as f:
-                    f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(i)+"\n")
+                    f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(t)+"\n")
             else:
                 with open(filename, "a") as f:
                     f.write("achieved_goal_anytime,achieved_goal_end,num_steps"+"\n")
-                    f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(i)+"\n")
+                    f.write(str(achieved_goal_anytime)+","+str(achieved_goal_end)+","+str(t)+"\n")
 
 if __name__ == "__main__":
     args = vars(parser.parse_args())

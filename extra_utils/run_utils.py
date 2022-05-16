@@ -137,6 +137,7 @@ def process_obs(obs, obj_index, obs_mod):
     return new_obs
 
 def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts, times_to_go, tokens, obj_index, obs_mod, convert_to_torch=True):
+    # import pdb; pdb.set_trace()
     new_obs = process_obs(obs, obj_index, obs_mod)
     new_obs, acts = scale_inputs(obs_scaler, None, new_obs[None], action_scaled, "noarm" in obs_mod)
     if prev_obs is not None:

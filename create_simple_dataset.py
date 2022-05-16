@@ -81,28 +81,30 @@ def check_if_exact_one_object_from_obs(obs, disc_cond, color, object_type):
 
         return matches == 1, index_first_match
 
-def get_new_obs(filename, obj_index, nocol=False, noarm=False):
+def get_new_obs(filename, obj_index, nocol=False, noarm=False, include_size=False):
     obs_file = processed_data_folder+filename+".npz.obs_cont.npy"
     obs = np.load(obs_file)
-    return get_new_obs_from_obs(obs, obj_index, nocol=nocol, noarm=noarm)
+    return get_new_obs_from_obs(obs, obj_index, nocol=nocol, noarm=noarm, include_size=include_size)
 
-def get_new_obs_from_obs(obs, obj_index, nocol=False, noarm=False):
+def get_new_obs_from_obs(obs, obj_index, nocol=False, noarm=False, include_size=False):
     arm_obs = obs[:,:8]
     obj_data = obs[:,8+(9+8)*obj_index:8+(9+8)*(obj_index+1)]
-    obj_pos_orn = obj_data[:,:6]
+    obj_transform = obj_data[:,:6]
+    if include_size:
+        obj_transform = np.concatenate([obj_data[:,:6], obj_data[:,-3:]], axis=1)
     obj_col = obj_data[:,6:6+8]
     extra_obs = obs[:,8+(9+8)*3:]
 
     if nocol:
         if noarm:
-            new_obs = np.concatenate([obj_pos_orn, extra_obs], axis=1)
+            new_obs = np.concatenate([obj_transform, extra_obs], axis=1)
         else:
-            new_obs = np.concatenate([arm_obs, obj_pos_orn, extra_obs], axis=1)
+            new_obs = np.concatenate([arm_obs, obj_transform, extra_obs], axis=1)
     else:
         if noarm:
-            new_obs = np.concatenate([obj_pos_orn, obj_col, extra_obs], axis=1)
+            new_obs = np.concatenate([obj_transform, obj_col, extra_obs], axis=1)
         else:
-            new_obs = np.concatenate([arm_obs, obj_pos_orn, obj_col, extra_obs], axis=1)
+            new_obs = np.concatenate([arm_obs, obj_transform, obj_col, extra_obs], axis=1)
     return new_obs
 
 #%%
@@ -138,7 +140,7 @@ if __name__ == "__main__":
             exact_one_object, obj_index = check_if_exact_one_object(filename, color, object_type)
             if exact_one_object:
                 print(filename)
-                new_obs = get_new_obs(filename, obj_index, nocol=True, noarm=True)
+                new_obs = get_new_obs(filename, obj_index, nocol=True, noarm=True, include_size=True)
                 new_base_filenames_file.write(filename+"\n")
 
                 # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
@@ -152,7 +154,8 @@ if __name__ == "__main__":
                 np.save(processed_data_folder+filename+".annotation_simp_wnoun.npy", ann_arr_simp)
                 # np.save(processed_data_folder+filename+".obs_cont_single.npy", new_obs)
                 # np.save(processed_data_folder+filename+".obs_cont_single_nocol.npy", new_obs)
-                np.save(processed_data_folder+filename+".obs_cont_single_nocol_noarm.npy", new_obs)
+                # np.save(processed_data_folder+filename+".obs_cont_single_nocol_noarm.npy", new_obs)
+                np.save(processed_data_folder+filename+".obs_cont_single_nocol_noarm_incsize.npy", new_obs)
 
     new_base_filenames_file.close()
 

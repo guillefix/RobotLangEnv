@@ -18,7 +18,8 @@ _, _, all_descriptions = generate_all_descriptions(env_params)
 def generate_goal(single_obj=False, use_train_set=False):
     if use_train_set:
         filenames = [x[:-1] for x in open(processed_data_folder+"/base_filenames_single_objs_filtered.txt", "r").readlines()]
-        descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read()[:-1] for x in filenames]
+        # descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read()[:-1] for x in filenames]
+        descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read().rstrip() for x in filenames]
         # print(descriptions)
     else:
         descriptions = list(all_descriptions)

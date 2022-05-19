@@ -31,6 +31,8 @@ export ROOT_DIR_MODEL=/mnt/multimodal-transflower/
 import argparse
 parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
+parser.add_argument('--using_tt_model', action='store_true', help='whether to load a model from trajectory transformer')
+parser.add_argument('--simple_obs', action='store_true', help='whether to use the simple_obs in the env')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
 parser.add_argument('--computing_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
@@ -62,7 +64,7 @@ else:
     device = 'cpu'
 
 
-def run(using_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200):
+def run(using_model=False, simple_obs=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200):
     varying_args = varying_args.split(",")
     args = locals()
     # LOAD demo data
@@ -79,59 +81,68 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         import torch
 
         import sys
-        sys.path.append(root_dir_model)
-        from inference.generate import load_model_from_logs_path
+        if using_model:
+            if not using_tt_model:
+                sys.path.append(root_dir_model)
+                from inference.generate import load_model_from_logs_path
+                default_save_path = pretrained_folder+pretrained_name
+                logs_path = default_save_path
+                #load model:
+                #model, opt = load_model_from_logs_path(logs_path, version_index=-2)
+                model, opt = load_model_from_logs_path(logs_path, version_index=-1)
+                if using_torchscript:
+                    print("Using torchscript")
+                    model = torch.jit.load(model_folder+'compiled_jit.pth')
+                else:
+                    model = model.to(device)
+            else:
+                sys.path.append(root_dir_tt_model)
+                raise NotImplementedError #ehm i think i will use the plan.py script in trajectory-transformer to evaluate it actually~ Leaving this here in case I change my mind lol
 
-        default_save_path = pretrained_folder+pretrained_name
-        logs_path = default_save_path
-        #load model:
-        #model, opt = load_model_from_logs_path(logs_path, version_index=-2)
-        model, opt = load_model_from_logs_path(logs_path, version_index=-1)
-        if using_torchscript:
-            print("Using torchscript")
-            model = torch.jit.load(model_folder+'compiled_jit.pth')
+        if not simple_obs:
+            input_dims = [int(x) for x in str(opt.dins).split(",")]
+            output_dims = [int(x) for x in str(opt.douts).split(",")]
+            input_lengths = [int(x) for x in str(opt.input_lengths).split(",")]
+
+            input_mods = opt.input_modalities.split(",")
+            output_mods = opt.output_modalities.split(",")
+
+            obs_mod = None
+            obs_mod_idx = None
+            acts_mod = None
+            acts_mod_idx = None
+            ann_mod = None
+            ann_mod_idx = None
+            ttg_mod = None
+            ttg_mod_idx = None
+            for i,mod in enumerate(input_mods):
+                if "obs" in mod:
+                    obs_mod = mod
+                    obs_mod_idx = i
+                elif "acts" in mod:
+                    acts_mod = mod
+                    acts_mod_idx = i
+                elif "annotation" in mod:
+                    ann_mod = mod
+                    ann_mod_idx = i
+                elif "times_to_go" in mod:
+                    ttg_mod = mod
+                    ttg_mod_idx = i
+
+            if ttg_mod is None:
+                times_to_go = None
+            else:
+                times_to_go = np.array(range(times_to_go_start+input_lengths[ttg_mod_idx]-1, times_to_go_start-1, -1))
+                times_to_go = np.expand_dims(times_to_go, 1)
+
+            desc_max_len = input_lengths[ann_mod_idx]
+            context_size_obs=input_lengths[obs_mod_idx]
+            context_size_acts=input_lengths[acts_mod_idx]
+            if ttg_mod is not None:
+                context_size_ttg=input_lengths[ttg_mod_idx]
         else:
-            model = model.to(device)
-
-        input_dims = [int(x) for x in str(opt.dins).split(",")]
-        output_dims = [int(x) for x in str(opt.douts).split(",")]
-        input_lengths = [int(x) for x in str(opt.input_lengths).split(",")]
-
-        input_mods = opt.input_modalities.split(",")
-        output_mods = opt.output_modalities.split(",")
-
-        obs_mod = None
-        obs_mod_idx = None
-        acts_mod = None
-        acts_mod_idx = None
-        ann_mod = None
-        ann_mod_idx = None
-        ttg_mod = None
-        ttg_mod_idx = None
-        for i,mod in enumerate(input_mods):
-            if "obs" in mod:
-                obs_mod = mod
-                obs_mod_idx = i
-            elif "acts" in mod:
-                acts_mod = mod
-                acts_mod_idx = i
-            elif "annotation" in mod:
-                ann_mod = mod
-                ann_mod_idx = i
-            elif "times_to_go" in mod:
-                ttg_mod = mod
-                ttg_mod_idx = i
-
-        if ttg_mod is None:
+            desc_max_len = 10
             times_to_go = None
-        else:
-            times_to_go = np.array(range(times_to_go_start+input_lengths[ttg_mod_idx]-1, times_to_go_start-1, -1))
-            times_to_go = np.expand_dims(times_to_go, 1)
-
-        context_size_obs=input_lengths[obs_mod_idx]
-        context_size_acts=input_lengths[acts_mod_idx]
-        if ttg_mod is not None:
-            context_size_ttg=input_lengths[ttg_mod_idx]
 
         #obs_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+obs_mod+"_scaler.pkl", "rb"))
         #acts_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+acts_mod+"_scaler.pkl", "rb"))
@@ -144,7 +155,7 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         elif random_seed:
             prev_obs = obs_scaler.inverse_transform(np.random.randn(context_size_obs,input_dims[obs_mod_idx]))
             prev_acts = acts_scaler.inverse_transform(np.random.randn(context_size_acts,outpu_dims[0]))
-        else:
+        elif not simple_obs:
             # print(processed_data_folder+"generated_data_"+session_id+"_"+rec_id+"_data."+obs_mod+".npy")
             if os.path.exists(processed_data_folder+"UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data."+obs_mod+".npy"):
                 filename = "UR5_"+session_id+"_obs_act_etc_"+rec_id+"_data"
@@ -156,6 +167,9 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
             acts_traj_unscaled = acts_scaler.inverse_transform(acts_traj)
             prev_obs = obs_traj_unscaled[:context_size_obs]
             prev_acts = acts_traj_unscaled[:context_size_acts]
+        else:
+            prev_obs = None
+            prev_acts = None
 
         if using_model and dynamic_temp:
             prev_acts2 = traj_data['acts'][:20]
@@ -169,8 +183,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
     ##### START ENV
     joint_control = False # Toggle this flag to control joints or ABS RPY Space
     if using_model:
-        env = ExtendedUR5PlayAbsRPY1Obj(obs_scaler = obs_scaler, acts_scaler = acts_scaler, prev_obs = prev_obs, save_relabelled_trajs = save_relabelled_trajs,
-                                        prev_acts = prev_acts, times_to_go = times_to_go, desc_max_len = input_lengths[ann_mod_idx], obs_mod = obs_mod, args=args)
+        env = ExtendedUR5PlayAbsRPY1Obj(simple_obs=simple_obs, obs_scaler = obs_scaler, acts_scaler = acts_scaler, prev_obs = prev_obs, save_relabelled_trajs = save_relabelled_trajs,
+                                        prev_acts = prev_acts, times_to_go = times_to_go, desc_max_len = desc_max_len, obs_mod = obs_mod, args=args)
     else:
         env = ExtendedUR5PlayAbsRPY1Obj(save_relabelled_trajs = save_relabelled_trajs, args = args)
 
@@ -209,7 +223,12 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                 else:
                     temp = temp
                 # start_time = time.time()
-                scaled_acts, _, logPs_temp = model(tuple((torch.from_numpy(o).to(model.device) for o in obs)), temp=temp)
+                if not simple_obs:
+                    obs_proc = tuple((torch.from_numpy(o).to(model.device) for o in obs))
+                if using_tt_model:
+                    scaled_acts = model(obs)
+                else:
+                    scaled_acts, _, logPs_temp = model(obs_proc, temp=temp)
                 # print("--- Inference time: %s seconds ---" % (time.time() - start_time))
                 scaled_acts = scaled_acts[0][0].cpu()
                 if computing_loss:
@@ -246,7 +265,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
                 # print(logP)
 
         #run env
-        obs, r, success, info = env.step(action)
+        obs, r, done, info = env.step(action)
+        success = r > 0
 
         new_descriptions = info["new_descriptions"]
 
@@ -288,7 +308,8 @@ def run(using_model=False, computing_loss=False, computing_relabelled_logPs=Fals
         achieved_goal_end = success
         if success:
             achieved_goal_anytime = True
-            break
+            if using_model:
+                break
 
     if save_eval_results:
         if not Path(root_folder+"results").is_dir():

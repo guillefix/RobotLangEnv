@@ -47,6 +47,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 			self.sample_random_goal = sample_random_goal
 			self.sample_goal_from_train_set = sample_goal_from_train_set
 			self.simple_obs = simple_obs
+			self.max_episode_length = max_episode_length
 			if self.simple_obs:
 				if "obs_cont_single_nocol_noarm" in obs_mod:
 					n = 18

@@ -9,6 +9,7 @@ parser.add_argument('--sample_goals', action='store_true', help='whether to samp
 parser.add_argument('--num_tasks', type=int, default=1, help='number of tasks (overriden by number of sequence ids if base_filenames_file is not None)')
 parser.add_argument('--num_repeats', type=int, default=1, help='number of times each demo should be used')
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
+parser.add_argument('--simple_obs', action='store_true', help='whether to use the simple_obs in the env')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
 parser.add_argument('--computing_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')

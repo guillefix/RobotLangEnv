@@ -24,6 +24,10 @@ if "ROOT_DIR_MODEL" not in os.environ:
     root_dir_model = "/home/guillefix/code/multimodal-transflower/"
 else:
     root_dir_model = os.environ["ROOT_DIR_MODEL"]
+if "ROOT_DIR_TT_MODEL" not in os.environ:
+    root_dir_tt_model = "/home/guillefix/code/trajectory-transformer/"
+else:
+    root_dir_tt_model = os.environ["ROOT_DIR_TT_MODEL"]
 if "ROOT_GENERATED_DATA" not in os.environ:
     root_folder_generated_data = "/home/guillefix/code/inria/"
 else:

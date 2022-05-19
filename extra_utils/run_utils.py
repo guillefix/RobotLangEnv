@@ -18,7 +18,8 @@ _, _, all_descriptions = generate_all_descriptions(env_params)
 def generate_goal(single_obj=False, use_train_set=False):
     if use_train_set:
         filenames = [x[:-1] for x in open(processed_data_folder+"/base_filenames_single_objs_filtered.txt", "r").readlines()]
-        descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read()[:-1] for x in filenames]
+        # descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read()[:-1] for x in filenames]
+        descriptions = [open(processed_data_folder+"/"+x+".npz.annotation.txt","r").read().rstrip() for x in filenames]
         # print(descriptions)
     else:
         descriptions = list(all_descriptions)
@@ -137,6 +138,7 @@ def process_obs(obs, obj_index, obs_mod):
     return new_obs
 
 def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts, times_to_go, tokens, obj_index, obs_mod, convert_to_torch=True):
+    # import pdb; pdb.set_trace()
     new_obs = process_obs(obs, obj_index, obs_mod)
     new_obs, acts = scale_inputs(obs_scaler, None, new_obs[None], action_scaled, "noarm" in obs_mod)
     if prev_obs is not None:

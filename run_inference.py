@@ -146,6 +146,8 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
 
         #obs_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+obs_mod+"_scaler.pkl", "rb"))
         #acts_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+acts_mod+"_scaler.pkl", "rb"))
+        print(obs_mod)
+        print(acts_mod)
         obs_scaler = pickle.load(open(processed_data_folder+obs_mod+"_scaler.pkl", "rb"))
         acts_scaler = pickle.load(open(processed_data_folder+acts_mod+"_scaler.pkl", "rb"))
 

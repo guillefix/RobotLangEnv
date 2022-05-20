@@ -141,7 +141,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 		obj_stuff = self.instance.get_stuff_to_save()
 		self.tokens = get_tokens(self.goal_str, max_length=self.desc_max_len, obj_stuff=obj_stuff)
 		obj_index = -1
-		if self.obs_mod in ["obs_cont_single_nocol_noarm_trim_scaled", "obs_cont_single_nocol_noarm_scaled"]:
+		if "single" in self.obs_mod:
 			has_conc_obj, color, object_type = has_concrete_object_ann(self.goal_str)
 			print(color, object_type)
 			# assert has_conc_obj

@@ -105,6 +105,7 @@ def get_new_obs_from_obs(obs, obj_index, nocol=False, noarm=False, include_size=
             new_obs = np.concatenate([obj_transform, obj_col, extra_obs], axis=1)
         else:
             new_obs = np.concatenate([arm_obs, obj_transform, obj_col, extra_obs], axis=1)
+
     return new_obs
 
 #%%

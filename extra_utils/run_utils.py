@@ -134,6 +134,7 @@ def process_obs(obs, obj_index, obs_mod):
         if "single" in obs_mod:
             nocol = "nocol" in obs_mod
             noarm = "noarm" in obs_mod
+            include_size = "incsize" in obs_mod
             new_obs = get_new_obs_from_obs(new_obs, obj_index, nocol=nocol, noarm=noarm)[0]
     return new_obs
 

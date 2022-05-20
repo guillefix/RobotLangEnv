@@ -64,7 +64,7 @@ else:
     device = 'cpu'
 
 
-def run(using_model=False, simple_obs=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200):
+def run(using_model=False, simple_obs=False, using_tt_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200):
     varying_args = varying_args.split(",")
     args = locals()
     # LOAD demo data

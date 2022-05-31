@@ -153,10 +153,16 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 					matches += 1
 					obj_index = i
 		self.obj_index = obj_index
+		# if self.prev_obs is not None and self.prev_acts is not None:
 		if self.times_to_go is not None:
 			inputs = (self.times_to_go, self.tokens, self.prev_obs, self.prev_acts)
 		else:
 			inputs = (self.tokens, self.prev_obs, self.prev_acts)
+		# else:
+		# 	if self.times_to_go is not None:
+		# 		inputs = (self.times_to_go, self.tokens, self.observation_space[2].sample(), self.observation_space[3].sample())
+		# 	else:
+		# 		inputs = (self.tokens, self.observation_space[1].sample(), self.observation_space[2].sample())
 		if self.simple_obs:
 			inputs = self.observation_space.sample()
 		elif self.use_dict_space:

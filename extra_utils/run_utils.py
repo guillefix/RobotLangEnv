@@ -162,7 +162,7 @@ def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts
         inputs = package_inputs(tokens, prev_obs, prev_acts, times_to_go)
     else:
         if times_to_go is not None:
-            inputs = (tokens, prev_obs, prev_acts, times_to_go)
+            inputs = (times_to_go, tokens, prev_obs, prev_acts)
         else:
             inputs = (tokens, prev_obs, prev_acts)
     return inputs

@@ -32,3 +32,8 @@ if "ROOT_GENERATED_DATA" not in os.environ:
     root_folder_generated_data = "/home/guillefix/code/inria/"
 else:
     root_folder_generated_data = os.environ["ROOT_GENERATED_DATA"]
+
+if "PROCESSED_GENERATED_DATA_FOLDER" not in os.environ:
+    processed_generated_data_folder = "/home/guillefix/code/inria/generated_data_processed/"
+else:
+    processed_generated_data_folder = os.environ["PROCESSED_GENERATED_DATA_FOLDER"]

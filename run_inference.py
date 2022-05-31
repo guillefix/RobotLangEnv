@@ -33,6 +33,7 @@ parser = argparse.ArgumentParser(description='Evaluate LangGoalRobot environment
 parser.add_argument('--using_model', action='store_true', help='whether to evaluate a model or to evaluate a recorded trajectory')
 parser.add_argument('--using_tt_model', action='store_true', help='whether to load a model from trajectory transformer')
 parser.add_argument('--simple_obs', action='store_true', help='whether to use the simple_obs in the env')
+# parser.add_argument('--predict_ttg', action='store_true', help='whether the model predicts time to go')
 parser.add_argument('--computing_loss', action='store_true', help='whether to compute the loss of a recorded trajectory')
 parser.add_argument('--computing_relabelled_logPs', action='store_true', help='whether to compute the logP of the trajectory chunk before a state where some goal(s) have been completed')
 parser.add_argument('--save_eval_results', action='store_true', help='whether to save evaluation results')
@@ -129,11 +130,26 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                     ttg_mod = mod
                     ttg_mod_idx = i
 
+            acts_output_mod = None
+            acts_mod_output_idx = None
+            ttg_output_mod = None
+            ttg_mod_output_idx = None
+            for i,mod in enumerate(output_mods):
+                if "acts" in mod:
+                    acts_output_mod = mod
+                    acts_mod_output_idx = i
+                elif "times_to_go" in mod:
+                    ttg_output_mod = mod
+                    ttg_mod_output_idx = i
+
+            predict_ttg = ttg_output_mod is not None
+            acts_mod_output_idx = 0
             if ttg_mod is None:
                 times_to_go = None
             else:
                 times_to_go = np.array(range(times_to_go_start+input_lengths[ttg_mod_idx]-1, times_to_go_start-1, -1))
                 times_to_go = np.expand_dims(times_to_go, 1)
+            print("predict ttg", predict_ttg)
 
             desc_max_len = input_lengths[ann_mod_idx]
             context_size_obs=input_lengths[obs_mod_idx]
@@ -148,8 +164,12 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
         #acts_scaler = pickle.load(open(pretrained_folder+pretrained_name+"/"+acts_mod+"_scaler.pkl", "rb"))
         print(obs_mod)
         print(acts_mod)
-        obs_scaler = pickle.load(open(processed_data_folder+obs_mod+"_scaler.pkl", "rb"))
-        acts_scaler = pickle.load(open(processed_data_folder+acts_mod+"_scaler.pkl", "rb"))
+        if opt.data_dir.split("/")[-1] == "generated_data_processed":
+            obs_scaler = pickle.load(open(processed_generated_data_folder+obs_mod+"_scaler.pkl", "rb"))
+            acts_scaler = pickle.load(open(processed_generated_data_folder+acts_mod+"_scaler.pkl", "rb"))
+        else:
+            obs_scaler = pickle.load(open(processed_data_folder+obs_mod+"_scaler.pkl", "rb"))
+            acts_scaler = pickle.load(open(processed_data_folder+acts_mod+"_scaler.pkl", "rb"))
 
         if zero_seed:
             prev_obs = obs_scaler.inverse_transform(np.zeros((context_size_obs,input_dims[obs_mod_idx])))
@@ -228,14 +248,18 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                 if not simple_obs:
                     obs_proc = tuple((torch.from_numpy(o).to(model.device) for o in obs))
                 if using_tt_model:
-                    scaled_acts = model(obs)
+                    predictions = model(obs)
                 else:
-                    scaled_acts, _, logPs_temp = model(obs_proc, temp=temp)
+                    predictions, _, logPs_temp = model(obs_proc, temp=temp)
                 # print("--- Inference time: %s seconds ---" % (time.time() - start_time))
-                scaled_acts = scaled_acts[0][0].cpu()
+                scaled_acts = predictions[acts_mod_output_idx][0].cpu()
                 if computing_loss:
                     logP = logPs_temp[0].cpu().item()
                     logPs.append(logP)
+
+                if predict_ttg:
+                    predicted_ttg = predictions[ttg_mod_output_idx][0][0][0].cpu().numpy()
+                    print("predicted_ttg", predicted_ttg)
                 # print(logP)
             action = scaled_acts
             if dynamic_temp:
@@ -269,6 +293,9 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
         #run env
         obs, r, done, info = env.step(action)
         success = r > 0
+        if times_to_go is not None and predict_ttg:
+            obs[0][-1] = predicted_ttg
+            # pass
 
         new_descriptions = info["new_descriptions"]
 

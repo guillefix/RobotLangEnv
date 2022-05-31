@@ -139,6 +139,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
 		# print("env info_reset:", info_reset)
 		self.instance.reset(o, info_reset=info_reset, description=self.goal_str, joint_poses=joint_poses, objects=objects, restore_objs=restore_objs)
 		obj_stuff = self.instance.get_stuff_to_save()
+		print(obj_stuff)
 		self.tokens = get_tokens(self.goal_str, max_length=self.desc_max_len, obj_stuff=obj_stuff)
 		obj_index = -1
 		if "single" in self.obs_mod:
@@ -244,6 +245,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
         # env.instance.reset_objects(obs)
 		if self.save_relabelled_trajs:
 			self.targetJoints.append(info["target_poses"])
+		#print(obs.shape)
 		inputs = make_inputs(self.obs_scaler, self.acts_scaler, obs, action_scaled, self.prev_obs, self.prev_acts, self.times_to_go, self.tokens, self.obj_index, self.obs_mod, convert_to_torch=False)
 		if self.simple_obs:
 			inputs = inputs[1][0]

@@ -55,6 +55,7 @@ parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the 
 parser.add_argument('--save_chunk_size', type=int, default=120, help='the number of frames previous to achievement of a goal to consider part of the episode saved for that goal')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--times_to_go_start', type=int, default=200, help='the initial times to go when set manually')
+parser.add_argument('--version_index', type=int, default=-1, help='the version of the checkpoint to load')
 
 if torch.cuda.is_available():
     print("CUDA available")
@@ -65,7 +66,7 @@ else:
     device = 'cpu'
 
 
-def run(using_model=False, simple_obs=False, using_tt_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200):
+def run(using_model=False, simple_obs=False, using_tt_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200, version_index=-1):
     varying_args = varying_args.split(",")
     args = locals()
     # LOAD demo data
@@ -90,7 +91,7 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                 logs_path = default_save_path
                 #load model:
                 #model, opt = load_model_from_logs_path(logs_path, version_index=-2)
-                model, opt = load_model_from_logs_path(logs_path, version_index=-1)
+                model, opt = load_model_from_logs_path(logs_path, version_index=version_index)
                 if using_torchscript:
                     print("Using torchscript")
                     model = torch.jit.load(model_folder+'compiled_jit.pth')
@@ -123,7 +124,7 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                 elif "acts" in mod:
                     acts_mod = mod
                     acts_mod_idx = i
-                elif "annotation" in mod:
+                elif "annotation" in mod or "disc_cond" in mod:
                     ann_mod = mod
                     ann_mod_idx = i
                 elif "times_to_go" in mod:
@@ -246,6 +247,7 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                     temp = temp
                 # start_time = time.time()
                 if not simple_obs:
+                    #print(obs)
                     obs_proc = tuple((torch.from_numpy(o).to(model.device) for o in obs))
                 if using_tt_model:
                     predictions = model(obs)
@@ -331,7 +333,10 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+ann_mod, new_tokenss)
                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+obs_mod, scaled_obss)
                 np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+acts_mod, scaled_actss)
-                np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+"times_to_go", times_to_go_save)
+                if ttg_mod is not None:
+                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+"."+ttg_mod, times_to_go_save)
+                else:
+                    np.save(root_folder_generated_data+"generated_data_processed/"+"UR5_{}_obs_act_etc_{}_data".format(new_session_id, new_rec_id)+".npz.times_to_go", times_to_go_save)
 
         print(goal_str+": ",success)
         achieved_goal_end = success

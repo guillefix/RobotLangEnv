@@ -136,8 +136,8 @@ def process_obs(obs, obj_index, obs_mod):
             noarm = "noarm" in obs_mod
             include_size = "incsize" in obs_mod
             # print("include_size", include_size)
-            new_obs = get_new_obs_from_obs(new_obs, obj_index, nocol=nocol, noarm=noarm, include_size=include_size)[0]
-    return new_obs
+            new_obs = get_new_obs_from_obs(new_obs, obj_index, nocol=nocol, noarm=noarm, include_size=include_size)
+    return new_obs[0]
 
 def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts, times_to_go, tokens, obj_index, obs_mod, convert_to_torch=True):
     # import pdb; pdb.set_trace()

@@ -31,6 +31,7 @@ parser.add_argument('--dynamic_temp_delta', type=float, default=0.99, help='the 
 parser.add_argument('--save_chunk_size', type=int, default=120, help='the number of frames previous to achievement of a goal to consider part of the episode saved for that goal')
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--times_to_go_start', type=int, default=200, help='the initial times to go when set manually')
+parser.add_argument('--version_index', type=int, default=-1, help='the version of the checkpoint to load')
 
 args = parser.parse_args()
 

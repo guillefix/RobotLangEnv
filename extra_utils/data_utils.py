@@ -28,7 +28,7 @@ def get_tokens(goal_str, max_length=11, base_length=11, obj_stuff=None, vocab=No
     if max_length == 10:
         tokens = np.concatenate([tokens[:1], tokens[2:]])
     elif max_length == 14:
-        obj_types = [vocab[t] for t in map(lambda x: x["type"], obj_stuff)]
+        obj_types = [int(vocab[t]) for t in map(lambda x: x["type"], obj_stuff[0])]
         obj_types = np.array(obj_types)
         tokens = np.concatenate([tokens, obj_types])
 

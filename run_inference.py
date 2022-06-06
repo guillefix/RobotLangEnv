@@ -56,6 +56,7 @@ parser.add_argument('--save_chunk_size', type=int, default=120, help='the number
 parser.add_argument('--max_number_steps', type=int, default=3000, help='the temperature parameter for the model (note for normalizing flows, this isnt the real temperature, just a proxy)')
 parser.add_argument('--times_to_go_start', type=int, default=200, help='the initial times to go when set manually')
 parser.add_argument('--version_index', type=int, default=-1, help='the version of the checkpoint to load')
+parser.add_argument('--n_output_samples', type=int, default=1, help='the number of samples of outputs of the model, useful for using with ttg')
 
 if torch.cuda.is_available():
     print("CUDA available")
@@ -66,7 +67,7 @@ else:
     device = 'cpu'
 
 
-def run(using_model=False, simple_obs=False, using_tt_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200, version_index=-1):
+def run(using_model=False, simple_obs=False, using_tt_model=False, computing_loss=False, computing_relabelled_logPs=False, render=False, goal_str=None, session_id=None, rec_id=None, pretrained_name=None, experiment_name=None, restore_objects=False, temp=1.0, dynamic_temp=False, dynamic_temp_delta=0.99, max_number_steps=3000, zero_seed=False, random_seed=False, using_torchscript=False, save_eval_results=False, save_relabelled_trajs=False, varying_args="session_id,rec_id", save_chunk_size=120, times_to_go_start=200, version_index=-1, n_output_samples=1):
     varying_args = varying_args.split(",")
     args = locals()
     # LOAD demo data
@@ -148,7 +149,7 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
             if ttg_mod is None:
                 times_to_go = None
             else:
-                times_to_go = np.array(range(times_to_go_start+input_lengths[ttg_mod_idx]-1, times_to_go_start-1, -1))
+                times_to_go = np.array(range(times_to_go_start+input_lengths[ttg_mod_idx]-1, times_to_go_start-1, -1)).astype(np.float32)
                 times_to_go = np.expand_dims(times_to_go, 1)
             print("predict ttg", predict_ttg)
 
@@ -248,19 +249,38 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
                 # start_time = time.time()
                 if not simple_obs:
                     #print(obs)
-                    obs_proc = tuple((torch.from_numpy(o).to(model.device) for o in obs))
+                    print(obs[3].shape)
+                    obs_proc = tuple((torch.from_numpy(np.tile(np.expand_dims(o,1), (1,n_output_samples,1))).to(model.device) for o in obs))
+                    print(obs_proc[3].shape)
+                else:
+                    obs_proc = obs
                 if using_tt_model:
                     predictions = model(obs)
                 else:
+                    # if predict_ttg:
+                    #     # noise = model.output_mod_glows[ttg_mod_output_idx].distribution.sample((10, 2, 1), temp, device=model.device).float()
+                    #     # noises = []
+                    #     # for i,mod in enumerate(output_mods):
+                    #     #     if i == acts_mod_output_idx:
+                    #     #         noises.append(None)
+                    #     #     elif i == ttg_mod_output_idx:
+                    #     #         noises.append(noise)
+                    #     # print(noises)
+                    #     predictions, _, logPs_temp = model(obs_proc, temp=temp)
+                    # else:
                     predictions, _, logPs_temp = model(obs_proc, temp=temp)
                 # print("--- Inference time: %s seconds ---" % (time.time() - start_time))
-                scaled_acts = predictions[acts_mod_output_idx][0].cpu()
+                scaled_acts = predictions[acts_mod_output_idx][0][0:1].cpu()
+                print(scaled_acts)
                 if computing_loss:
                     logP = logPs_temp[0].cpu().item()
                     logPs.append(logP)
 
                 if predict_ttg:
-                    predicted_ttg = predictions[ttg_mod_output_idx][0][0][0].cpu().numpy()
+                    # print(predictions[ttg_mod_output_idx])
+                    predicted_ttg = predictions[ttg_mod_output_idx][0].cpu().numpy()
+                    print(predicted_ttg)
+                    predicted_ttg = predicted_ttg.min()
                     print("predicted_ttg", predicted_ttg)
                 # print(logP)
             action = scaled_acts
@@ -297,6 +317,8 @@ def run(using_model=False, simple_obs=False, using_tt_model=False, computing_los
         success = r > 0
         if times_to_go is not None and predict_ttg:
             obs[0][-1] = predicted_ttg
+            # obs[0][-1] = (250-t)/200
+            print(obs[0][-1])
             # pass
 
         new_descriptions = info["new_descriptions"]

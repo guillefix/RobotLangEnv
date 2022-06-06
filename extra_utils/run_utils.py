@@ -53,6 +53,7 @@ def scale_inputs(obs_scaler, acts_scaler, prev_obs, prev_acts, noarm=True, add_b
     return prev_obs, prev_acts
 
 def package_inputs(tokens, obs, acts, times_to_go=None, n_tiles=1):
+    # print(n_tiles)
     # return [torch.from_numpy(tokens.copy()).unsqueeze(1).unsqueeze(1).cuda(), torch.from_numpy(prev_obs.copy()).unsqueeze(1).float().cuda(), torch.from_numpy(prev_acts.copy()).unsqueeze(1).float().cuda()]
     tokens = torch.from_numpy(tokens)
     # tokens = F.one_hot(tokens,num_classes=67)
@@ -139,7 +140,7 @@ def process_obs(obs, obj_index, obs_mod):
             new_obs = get_new_obs_from_obs(new_obs, obj_index, nocol=nocol, noarm=noarm, include_size=include_size)
     return new_obs[0]
 
-def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts, times_to_go, tokens, obj_index, obs_mod, convert_to_torch=True):
+def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts, times_to_go, tokens, obj_index, obs_mod, convert_to_torch=True, n_tiles=1):
     # import pdb; pdb.set_trace()
     new_obs = process_obs(obs, obj_index, obs_mod)
     new_obs, acts = scale_inputs(obs_scaler, None, new_obs[None], action_scaled, "noarm" in obs_mod)
@@ -159,7 +160,7 @@ def make_inputs(obs_scaler, acts_scaler, obs, action_scaled, prev_obs, prev_acts
     else:
         prev_acts = acts
     if convert_to_torch:
-        inputs = package_inputs(tokens, prev_obs, prev_acts, times_to_go)
+        inputs = package_inputs(tokens, prev_obs, prev_acts, times_to_go, n_tiles=n_tiles)
     else:
         if times_to_go is not None:
             inputs = (times_to_go, tokens, prev_obs, prev_acts)

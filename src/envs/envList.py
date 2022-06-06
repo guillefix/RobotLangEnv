@@ -39,6 +39,7 @@ class ExtendedUR5PlayAbsRPY1Obj(UR5PlayAbsRPY1Obj):
              goal_range_low= [-0.18, 0, 0.05], goal_range_high = [0.18, 0.3, 0.1], use_orientation=True):
 			super().__init__(num_objects, env_range_low, env_range_high, goal_range_low, goal_range_high, use_orientation)
 			high = np.array([6, 6, 6, 1, 1, 1, 1, 1])
+			# self.n_tiles = n_tiles # number of batches; number of stacked copies of the inputs to be used e.g. to produce multiple samples for probabilistic models
 			self.action_space = spaces.Box(-high, high)
 			if save_relabelled_trajs:
 			    assert check_completed_goals
